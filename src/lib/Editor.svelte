@@ -1,4 +1,6 @@
 <script lang="ts">
+	const { value, onchange } = $props(); // Add value prop
+
 	import { onMount } from 'svelte';
 	import { EditorState } from 'prosemirror-state';
 	import { EditorView } from 'prosemirror-view';
@@ -21,6 +23,7 @@
 
 	onMount(() => {
 		const state = EditorState.create({
+			doc: mySchema.nodeFromJSON(value),
 			schema: mySchema,
 			plugins: [
 				keymap({
@@ -36,6 +39,8 @@
 			dispatchTransaction(transaction) {
 				let newState = view.state.apply(transaction);
 				view.updateState(newState);
+				// Emit change event with new content
+				onchange(newState.doc.toJSON());
 			}
 		});
 
@@ -57,13 +62,13 @@
 	<div class="rounded-t-lg border-b border-gray-200 bg-gray-50 p-2">
 		<div class="flex gap-1">
 			<button
-				on:click={handleBold}
+				onclick={handleBold}
 				class="rounded px-2 py-1 text-sm font-medium text-gray-700 transition-colors duration-150 hover:bg-indigo-50 active:bg-indigo-100"
 			>
 				<span class="font-bold">B</span>
 			</button>
 			<button
-				on:click={handleItalic}
+				onclick={handleItalic}
 				class="rounded px-2 py-1 text-sm font-medium text-gray-700 transition-colors duration-150 hover:bg-indigo-50 active:bg-indigo-100"
 			>
 				<span class="italic">I</span>
