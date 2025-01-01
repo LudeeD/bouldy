@@ -33,19 +33,87 @@
 		todos.current = todos.current.filter((todo: Todo) => !todo.completed);
 	}
 
-	let completedTodosCount = $derived(todos.current.filter((todo: Todo) => todo.completed).length);
+	function isToday(date: Date) {
+		const today = new Date();
+		return (
+			date.getDate() === today.getDate() &&
+			date.getMonth() === today.getMonth() &&
+			date.getFullYear() === today.getFullYear()
+		);
+	}
 
-	console.log(navigator.language);
+	function isTomorrow(date: Date) {
+		const tomorrow = new Date();
+		tomorrow.setDate(tomorrow.getDate() + 1);
+		return date <= tomorrow;
+	}
+
+	function isThisWeek(date: Date) {
+		const today = new Date();
+		const weekEnd = new Date(today);
+		weekEnd.setDate(today.getDate() + (7 - today.getDay()));
+		return date <= weekEnd;
+	}
+
+	function isThisMonth(date: Date) {
+		const today = new Date();
+		return date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+	}
+
+	let currentFilter = $state('Today'); // Track current filter
+
+	let filtered_todos = $derived.by(() => {
+		const filteredTodos = todos.current.filter((todo: Todo) => {
+			const dueDate = new Date(todo.due);
+			switch (currentFilter) {
+				case 'Today':
+					return isToday(dueDate);
+				case 'Tomorrow':
+					return isTomorrow(dueDate);
+				case 'This week':
+					return isThisWeek(dueDate);
+				case 'This month':
+					return isThisMonth(dueDate);
+				case 'All':
+					return true;
+				default:
+					return false;
+			}
+		});
+		return filteredTodos;
+	});
+
+	let completedTodosCount = $derived(filtered_todos.filter((todo: Todo) => todo.completed).length);
 </script>
 
 <div class="flex basis-1/2 flex-col gap-2">
 	<nav class="rounded-lg border-2 border-black bg-blue-600 p-2">
 		<ul class="flex gap-4 text-black">
-			<NavLi text="Today" selected />
-			<NavLi text="Tomorrow" />
-			<NavLi text="This week" />
-			<NavLi text="This month" />
-			<NavLi text="All" />
+			<NavLi
+				text="Today"
+				selected={currentFilter === 'Today'}
+				onclick={() => (currentFilter = 'Today')}
+			/>
+			<NavLi
+				text="Tomorrow"
+				selected={currentFilter === 'Tomorrow'}
+				onclick={() => (currentFilter = 'Tomorrow')}
+			/>
+			<NavLi
+				text="This week"
+				selected={currentFilter === 'This week'}
+				onclick={() => (currentFilter = 'This week')}
+			/>
+			<NavLi
+				text="This month"
+				selected={currentFilter === 'This month'}
+				onclick={() => (currentFilter = 'This month')}
+			/>
+			<NavLi
+				text="All"
+				selected={currentFilter === 'All'}
+				onclick={() => (currentFilter = 'All')}
+			/>
 		</ul>
 	</nav>
 
@@ -73,7 +141,7 @@
 			<div class="text-gray-500">No todos found</div>
 		{/if}
 
-		{#each todos.current as item, index}
+		{#each filtered_todos as item, index}
 			<div class="flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50">
 				<div class="flex items-center space-x-2">
 					<input
