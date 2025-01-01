@@ -13,3 +13,7 @@
 		</div>
 	</div>
 </main>
+
+<svelte:head>
+	<title>Bouldy</title>
+</svelte:head>

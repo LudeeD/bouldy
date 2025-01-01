@@ -2,20 +2,26 @@
 	import NavLi from './atoms/nav-li.svelte';
 	import { LocalStorage } from '$lib/storage.svelte';
 	import type { Todo } from './types';
+	import { DateInput } from 'date-picker-svelte';
 
 	const todos = new LocalStorage('todos', []);
 
 	let newTodoText = $state('');
+	let dueDate = $state(new Date()); // Initialize with today's date
 
 	function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 
 		if (newTodoText.trim()) {
 			todos.current.push({
+				completed: false,
 				name: newTodoText,
-				completed: false
+				priority: 1,
+				context: 'normal',
+				due: dueDate
 			});
 			newTodoText = '';
+			dueDate = new Date();
 		}
 	}
 
@@ -28,6 +34,8 @@
 	}
 
 	let completedTodosCount = $derived(todos.current.filter((todo: Todo) => todo.completed).length);
+
+	console.log(navigator.language);
 </script>
 
 <div class="flex basis-1/2 flex-col gap-2">
@@ -42,34 +50,43 @@
 	</nav>
 
 	<div class="flex flex-col gap-2 rounded-lg border-2 border-black bg-white p-4">
-		<form onsubmit={handleSubmit} class="flex gap-2">
-			<input
-				type="text"
-				bind:value={newTodoText}
-				placeholder="Add a new todo..."
-				class="flex-1 rounded border p-2 focus:border-blue-500 focus:outline-none"
-			/>
-			<button
-				type="submit"
-				class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none"
-				disabled={!newTodoText.trim()}
-			>
-				Add
-			</button>
+		<form onsubmit={handleSubmit} class="flex flex-col gap-2">
+			<div class="flex gap-2">
+				<input
+					type="text"
+					bind:value={newTodoText}
+					placeholder="Add a new todo..."
+					class="flex-1 rounded border p-2 focus:border-blue-500 focus:outline-none"
+				/>
+				<DateInput bind:value={dueDate} class="w-fit self-center bg-blue-500" format="yyyy-MM-dd" />
+				<button
+					type="submit"
+					class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none"
+					disabled={!newTodoText.trim()}
+				>
+					Add
+				</button>
+			</div>
 		</form>
+
 		{#if todos.current.length === 0}
 			<div class="text-gray-500">No todos found</div>
 		{/if}
 
 		{#each todos.current as item, index}
-			<div class="flex items-center space-x-2 rounded border p-2 hover:bg-blue-500">
-				<input
-					type="checkbox"
-					class="form-checkbox"
-					checked={item.completed}
-					onchange={() => toggleTodo(index)}
-				/>
-				<span class:line-through={item.completed}>{item.name}</span>
+			<div class="flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50">
+				<div class="flex items-center space-x-2">
+					<input
+						type="checkbox"
+						class="form-checkbox"
+						checked={item.completed}
+						onchange={() => toggleTodo(index)}
+					/>
+					<span class:line-through={item.completed}>{item.name}</span>
+				</div>
+				<span class="text-sm text-gray-500">
+					{new Date(item.due).toLocaleDateString('en-GB')}
+				</span>
 			</div>
 		{/each}
 		{#if completedTodosCount > 0}
@@ -79,3 +96,9 @@
 		{/if}
 	</div>
 </div>
+
+<style>
+	:global(.date-time-picker) {
+		width: 16rem;
+	}
+</style>
