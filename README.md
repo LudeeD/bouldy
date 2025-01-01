@@ -1,38 +1,21 @@
-# sv
+# Bouldy
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+On my day to day I always wanted to have a tool that would combine todos and notes on the same dashboard
+Built with SvelteKit, TailwindCSS and browser local storage.
 
-## Creating a project
+- Works offline
+- Saves your data on your browser
 
-If you're seeing this, you've probably already done this step. Congrats!
 
-```bash
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+##  Development
 
 ```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+npm install # to install dependencies
+npm run dev # run the demo server
 ```
 
-## Building
+Is deployed via cloudflare pages, using a github action to build and deploy the app.
 
-To create a production version of your app:
+## Why Bouldy
 
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Bouldy is a fictional character in the game Hades. It's the rock that sysiphus is condemen to push up the hill for eternity. I thought it was a good name for a todo app.
