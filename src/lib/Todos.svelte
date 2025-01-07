@@ -57,7 +57,7 @@
 
 	function isThisMonth(date: Date) {
 		const today = new Date();
-		return date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+		return date.getMonth() <= today.getMonth() && date.getFullYear() <= today.getFullYear();
 	}
 
 	let currentFilter = $state('Today'); // Track current filter
