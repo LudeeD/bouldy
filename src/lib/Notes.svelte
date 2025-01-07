@@ -13,8 +13,6 @@
 	}
 </script>
 
-<div class="flex basis-1/2 flex-row gap-2">
-	<div class="flex h-full flex-1 flex-col rounded-lg border-2 border-black bg-white p-4">
-		<Editor value={notepad.current} onchange={handleEditorChange} />
-	</div>
+<div class="flex h-full flex-1 flex-col rounded-lg border-2 border-black bg-white p-4">
+	<Editor value={notepad.current} onchange={handleEditorChange} />
 </div>
