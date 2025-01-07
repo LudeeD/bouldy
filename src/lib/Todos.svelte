@@ -36,9 +36,9 @@
 	function isToday(date: Date) {
 		const today = new Date();
 		return (
-			date.getDate() === today.getDate() &&
-			date.getMonth() === today.getMonth() &&
-			date.getFullYear() === today.getFullYear()
+			date.getDate() <= today.getDate() &&
+			date.getMonth() <= today.getMonth() &&
+			date.getFullYear() <= today.getFullYear()
 		);
 	}
 
@@ -92,27 +92,46 @@
 			<NavLi
 				text="Today"
 				selected={currentFilter === 'Today'}
-				onclick={() => (currentFilter = 'Today')}
+				onclick={() => {
+					currentFilter = 'Today';
+					dueDate = new Date();
+				}}
 			/>
 			<NavLi
 				text="Tomorrow"
 				selected={currentFilter === 'Tomorrow'}
-				onclick={() => (currentFilter = 'Tomorrow')}
+				onclick={() => {
+					currentFilter = 'Tomorrow';
+					const tomorrow = new Date();
+					tomorrow.setDate(tomorrow.getDate() + 1);
+					dueDate = tomorrow;
+				}}
 			/>
 			<NavLi
 				text="This week"
 				selected={currentFilter === 'This week'}
-				onclick={() => (currentFilter = 'This week')}
+				onclick={() => {
+					currentFilter = 'This week';
+					const weekEnd = new Date();
+					weekEnd.setDate(weekEnd.getDate() + (7 - weekEnd.getDay()));
+					dueDate = weekEnd;
+				}}
 			/>
 			<NavLi
 				text="This month"
 				selected={currentFilter === 'This month'}
-				onclick={() => (currentFilter = 'This month')}
+				onclick={() => {
+					currentFilter = 'This month';
+					const lastDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+					dueDate = lastDayOfMonth;
+				}}
 			/>
 			<NavLi
 				text="All"
 				selected={currentFilter === 'All'}
-				onclick={() => (currentFilter = 'All')}
+				onclick={() => {
+					currentFilter = 'All';
+				}}
 			/>
 		</ul>
 	</nav>
@@ -152,7 +171,13 @@
 					/>
 					<span class:line-through={item.completed}>{item.name}</span>
 				</div>
-				<span class="text-sm text-gray-500">
+				<span
+					class="text-sm"
+					class:text-red-500={new Date().setHours(0, 0, 0, 0) >
+						new Date(item.due).setHours(0, 0, 0, 0)}
+					class:text-gray-500={new Date().setHours(0, 0, 0, 0) <=
+						new Date(item.due).setHours(0, 0, 0, 0)}
+				>
 					{new Date(item.due).toLocaleDateString('en-GB')}
 				</span>
 			</div>
