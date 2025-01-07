@@ -1,8 +1,8 @@
 <script lang="ts">
-	import Todos from '$lib/Todos.svelte';
+	import Notes from '$lib/Notes.svelte';
 </script>
 
-<Todos />
+<Notes />
 
 <svelte:head>
 	<title>Bouldy</title>
