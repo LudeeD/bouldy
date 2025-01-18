@@ -3,6 +3,8 @@
 	import { LocalStorage } from '$lib/storage.svelte';
 	import type { Todo } from './types';
 	import { DateInput } from 'date-picker-svelte';
+	import { flip } from 'svelte/animate';
+	import { dndzone } from 'svelte-dnd-action';
 
 	const todos = new LocalStorage('todos', []);
 
@@ -12,25 +14,43 @@
 	function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 
+		const next_id = todos.current.length
+			? Math.max(...todos.current.map((todo: Todo) => todo.id)) + 1
+			: 1;
+
 		if (newTodoText.trim()) {
-			todos.current.push({
-				completed: false,
-				name: newTodoText,
-				priority: 1,
-				context: 'normal',
-				due: dueDate
-			});
+			todos.current = [
+				{
+					id: next_id,
+					completed: false,
+					name: newTodoText,
+					priority: 1,
+					context: 'normal',
+					due: dueDate
+				},
+				...todos.current
+			];
+
 			newTodoText = '';
 			dueDate = new Date();
 		}
 	}
 
-	function toggleTodo(index: number) {
-		todos.current[index].completed = !todos.current[index].completed;
+	function toggleTodo(id: number) {
+		todos.current = todos.current.map((todo: Todo) =>
+			todo.id === id ? { ...todo, completed: !todo.completed } : todo
+		);
 	}
 
 	function clearCompletedTodos() {
 		todos.current = todos.current.filter((todo: Todo) => !todo.completed);
+	}
+	const flipDurationMs = 300;
+	function handleDndConsider(e) {
+		todos.current = e.detail.items;
+	}
+	function handleDndFinalize(e) {
+		todos.current = e.detail.items;
 	}
 
 	function isToday(date: Date) {
@@ -62,28 +82,7 @@
 
 	let currentFilter = $state('Today'); // Track current filter
 
-	let filtered_todos = $derived.by(() => {
-		const filteredTodos = todos.current.filter((todo: Todo) => {
-			const dueDate = new Date(todo.due);
-			switch (currentFilter) {
-				case 'Today':
-					return isToday(dueDate);
-				case 'Tomorrow':
-					return isTomorrow(dueDate);
-				case 'This week':
-					return isThisWeek(dueDate);
-				case 'This month':
-					return isThisMonth(dueDate);
-				case 'All':
-					return true;
-				default:
-					return false;
-			}
-		});
-		return filteredTodos;
-	});
-
-	let completedTodosCount = $derived(filtered_todos.filter((todo: Todo) => todo.completed).length);
+	let completedTodosCount = $derived(todos.current.filter((todo: Todo) => todo.completed).length);
 </script>
 
 <div class="flex flex-col gap-2">
@@ -160,28 +159,43 @@
 			<div class="text-gray-500">No todos found</div>
 		{/if}
 
-		{#each filtered_todos as item, index}
-			<div class="flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50">
-				<div class="flex items-center space-x-2">
-					<input
-						type="checkbox"
-						class="form-checkbox"
-						checked={item.completed}
-						onchange={() => toggleTodo(index)}
-					/>
-					<span class:line-through={item.completed}>{item.name}</span>
+		<section
+			use:dndzone={{ items: todos.current, flipDurationMs }}
+			onconsider={handleDndConsider}
+			onfinalize={handleDndFinalize}
+			class="flex flex-col gap-2"
+		>
+			{#each todos.current as item (item.id)}
+				<div animate:flip={{ duration: flipDurationMs }}>
+					{#if (currentFilter == 'Today' && isToday(new Date(item.due))) || (currentFilter == 'Tomorrow' && isTomorrow(new Date(item.due))) || (currentFilter == 'This week' && isThisWeek(new Date(item.due))) || (currentFilter == 'This month' && isThisMonth(new Date(item.due))) || currentFilter == 'All'}
+						<div
+							class="flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
+						>
+							<div class="flex items-center space-x-2">
+								<input
+									type="checkbox"
+									class="form-checkbox"
+									checked={item.completed}
+									onchange={() => toggleTodo(item.id)}
+								/>
+								<span class:line-through={item.completed}>{item.name}</span>
+							</div>
+
+							<span
+								class="text-sm"
+								class:text-red-500={new Date().setHours(0, 0, 0, 0) >
+									new Date(item.due).setHours(0, 0, 0, 0)}
+								class:text-gray-500={new Date().setHours(0, 0, 0, 0) <=
+									new Date(item.due).setHours(0, 0, 0, 0)}
+							>
+								{new Date(item.due).toLocaleDateString('en-GB')}
+							</span>
+						</div>
+					{/if}
 				</div>
-				<span
-					class="text-sm"
-					class:text-red-500={new Date().setHours(0, 0, 0, 0) >
-						new Date(item.due).setHours(0, 0, 0, 0)}
-					class:text-gray-500={new Date().setHours(0, 0, 0, 0) <=
-						new Date(item.due).setHours(0, 0, 0, 0)}
-				>
-					{new Date(item.due).toLocaleDateString('en-GB')}
-				</span>
-			</div>
-		{/each}
+			{/each}
+		</section>
+
 		{#if completedTodosCount > 0}
 			<button onclick={clearCompletedTodos} class="text-sm text-red-600 hover:text-red-800">
 				Clear {completedTodosCount} completed
