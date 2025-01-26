@@ -24,34 +24,37 @@
 	</div>
 
 	<div class="flex flex-col gap-2 rounded-lg border-2 border-black bg-white p-4">
-		{#each completed_todos as item (item.id)}
-			<div
-				class="group mt-2 flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
-			>
-				<div class="flex items-center space-x-2">
+		{#if completed_todos.length > 0}
+			{#each completed_todos as item (item.id)}
+				<div
+					class="group mt-2 flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
+				>
 					<div class="flex items-center space-x-2">
-						<input type="checkbox" class="form-checkbox" checked={item.completed} disabled />
-						<span class:line-through={item.completed}>{item.name}</span>
+						<div class="flex items-center space-x-2">
+							<input type="checkbox" class="form-checkbox" checked={item.completed} disabled />
+							<span class:line-through={item.completed}>{item.name}</span>
+						</div>
+					</div>
+
+					<div class="ml-auto flex items-center gap-2">
+						<span
+							class="text-sm"
+							class:text-red-500={new Date().setHours(0, 0, 0, 0) >
+								new Date(item.due).setHours(0, 0, 0, 0)}
+							class:text-gray-500={new Date().setHours(0, 0, 0, 0) <=
+								new Date(item.due).setHours(0, 0, 0, 0)}
+						>
+							{new Date(item.due).toLocaleDateString('en-GB')}
+						</span>
 					</div>
 				</div>
-
-				<div class="ml-auto flex items-center gap-2">
-					<span
-						class="text-sm"
-						class:text-red-500={new Date().setHours(0, 0, 0, 0) >
-							new Date(item.due).setHours(0, 0, 0, 0)}
-						class:text-gray-500={new Date().setHours(0, 0, 0, 0) <=
-							new Date(item.due).setHours(0, 0, 0, 0)}
-					>
-						{new Date(item.due).toLocaleDateString('en-GB')}
-					</span>
-				</div>
-			</div>
-		{/each}
-
-		<button onclick={clearCompletedTodos} class="mt-2 text-sm text-red-600 hover:text-red-800">
-			Delete {completed_todos.lenght} completed
-		</button>
+			{/each}
+			<button onclick={clearCompletedTodos} class="mt-2 text-sm text-red-600 hover:text-red-800">
+				Delete {completed_todos.lenght} completed
+			</button>
+		{:else}
+			<span> No completed todos, go do some <a href="/todos" class="underline">↩️ work</a> </span>
+		{/if}
 	</div>
 </div>
 
