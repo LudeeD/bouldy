@@ -7,23 +7,18 @@
 	import { dragHandle, dragHandleZone } from 'svelte-dnd-action';
 	import { v4 as uuidv4 } from 'uuid';
 
-	// LocalStorage store
 	const todos = new LocalStorage('todos', []);
+	let newTodoText = '';
+	let dueDate = new Date();
 
-	// -- New/Edited fields
-	let newTodoText = $state('');
-	let dueDate = $state(new Date());
-
-	// -- Editing states
-	let editingId: string | null = $state(null); // which todo is being edited
-	let editingText = $state(''); // text for the todo being edited
-	let editingDueDate = $state(new Date()); // due date for the todo being edited
+	let editingId: string | null = null;
+	let editingText = '';
+	let editingDueDate = new Date();
 
 	function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 
-		const next_id = uuidv4(); // store string ID
-
+		const next_id = uuidv4();
 		if (newTodoText.trim()) {
 			todos.current = [
 				{
@@ -52,7 +47,6 @@
 		todos.current = todos.current.filter((todo: Todo) => !todo.completed);
 	}
 
-	// -- Editing helpers
 	function startEdit(todo: Todo) {
 		editingId = todo.id;
 		editingText = todo.name;
@@ -79,7 +73,6 @@
 		editingDueDate = new Date();
 	}
 
-	// svelte-dnd-action
 	const flipDurationMs = 300;
 	function handleDndConsider(e) {
 		todos.current = e.detail.items;
@@ -88,7 +81,6 @@
 		todos.current = e.detail.items;
 	}
 
-	// Filters
 	function isToday(date: Date) {
 		const today = new Date();
 		return (
@@ -116,9 +108,9 @@
 		return date.getMonth() <= today.getMonth() && date.getFullYear() <= today.getFullYear();
 	}
 
-	let currentFilter = $state('Today');
-
-	let completedTodosCount = $derived(todos.current.filter((todo: Todo) => todo.completed).length);
+	let currentFilter = 'Today';
+	// Count how many are completed
+	$: completedTodosCount = todos.current.filter((todo: Todo) => todo.completed).length;
 </script>
 
 <div class="flex flex-col gap-2">
@@ -172,8 +164,7 @@
 	</nav>
 
 	<div class="flex flex-col gap-2 rounded-lg border-2 border-black bg-white p-4">
-		<!-- Add new todos -->
-		<form onsubmit={handleSubmit}>
+		<form on:submit={handleSubmit}>
 			<div class="flex flex-wrap gap-2">
 				<input
 					type="text"
@@ -192,34 +183,33 @@
 			</div>
 		</form>
 
-		<!-- If no todos, show some placeholder text -->
 		{#if todos.current.length === 0}
 			<div class="text-gray-500">No todos found</div>
 		{/if}
 
-		<!-- Todo list -->
 		<section
 			use:dragHandleZone={{ items: todos.current, flipDurationMs }}
-			onconsider={handleDndConsider}
-			onfinalize={handleDndFinalize}
+			on:consider={handleDndConsider}
+			on:finalize={handleDndFinalize}
 			class="flex flex-col"
 		>
 			{#each todos.current as item (item.id)}
 				<div animate:flip={{ duration: flipDurationMs }}>
-					<!-- Filter check -->
 					{#if (currentFilter == 'Today' && isToday(new Date(item.due))) || (currentFilter == 'Tomorrow' && isTomorrow(new Date(item.due))) || (currentFilter == 'This week' && isThisWeek(new Date(item.due))) || (currentFilter == 'This month' && isThisMonth(new Date(item.due))) || currentFilter == 'All'}
-						<!-- Editing form vs. display -->
+						<!-- Decide whether to show edit form or normal display -->
 						{#if editingId === item.id}
-							<!-- EDITING MODE -->
+							<!-- EDIT FORM -->
 							<div
 								class="mt-2 flex items-center justify-between space-x-2 rounded border bg-blue-50 p-2"
 							>
-								<form class="flex flex-wrap items-center gap-2" onsubmit={() => saveEdit(item.id)}>
+								<form
+									class="flex flex-wrap items-center gap-2"
+									on:submit|preventDefault={() => saveEdit(item.id)}
+								>
 									<input
 										type="text"
 										bind:value={editingText}
 										class="rounded border p-1 text-black"
-										placeholder="Edit todo text"
 									/>
 									<DateInput bind:value={editingDueDate} format="yyyy-MM-dd" class="bg-blue-100" />
 									<button
@@ -230,7 +220,7 @@
 									</button>
 									<button
 										type="button"
-										onclick={cancelEdit}
+										on:click={cancelEdit}
 										class="rounded bg-gray-400 px-2 py-1 text-white hover:bg-gray-500"
 									>
 										Cancel
@@ -239,8 +229,13 @@
 							</div>
 						{:else}
 							<!-- NORMAL DISPLAY -->
+							<!--
+							  Use 'group' so that children can respond to hover.
+							  The edit button will use 'hidden group-hover:inline-block'
+							  so that it only appears on hover.
+							-->
 							<div
-								class="mt-2 flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
+								class="group mt-2 flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
 							>
 								<div class="flex items-center space-x-2">
 									<div use:dragHandle aria-label="drag-handle" class="handle">
@@ -264,14 +259,13 @@
 											type="checkbox"
 											class="form-checkbox"
 											checked={item.completed}
-											onchange={() => toggleTodo(item.id)}
+											on:change={() => toggleTodo(item.id)}
 										/>
 										<span class:line-through={item.completed}>{item.name}</span>
 									</div>
 								</div>
 
 								<div class="ml-auto flex items-center gap-2">
-									<!-- Display due date; if it's past due, make it red -->
 									<span
 										class="text-sm"
 										class:text-red-500={new Date().setHours(0, 0, 0, 0) >
@@ -281,11 +275,10 @@
 									>
 										{new Date(item.due).toLocaleDateString('en-GB')}
 									</span>
-
-									<!-- Edit button -->
+									<!-- Edit button is hidden by default, shown on hover -->
 									<button
-										onclick={() => startEdit(item)}
-										class="rounded bg-yellow-500 px-2 py-1 text-white hover:bg-yellow-600"
+										on:click={() => startEdit(item)}
+										class="edit-button hidden rounded bg-yellow-500 px-2 py-1 text-white hover:bg-yellow-600 group-hover:inline-block"
 									>
 										Edit
 									</button>
@@ -297,9 +290,8 @@
 			{/each}
 		</section>
 
-		<!-- If there are completed todos, show clear-completed button -->
 		{#if completedTodosCount > 0}
-			<button onclick={clearCompletedTodos} class="mt-2 text-sm text-red-600 hover:text-red-800">
+			<button on:click={clearCompletedTodos} class="mt-2 text-sm text-red-600 hover:text-red-800">
 				Clear {completedTodosCount} completed
 			</button>
 		{/if}
