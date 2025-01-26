@@ -1,32 +1,30 @@
 <script lang="ts">
 	import { LocalStorage } from '$lib/storage.svelte';
+	import type { Todo } from '$lib/types';
 
-	const completed_todos = new LocalStorage('completed_todos', []);
+	const todos = new LocalStorage('todos', []);
 
 	function clearCompletedTodos() {
-		completed_todos.current = [];
+		todos.current = todos.current.filter((todo: Todo) => !todo.completed);
 	}
 
-	// Count how many are completed
-	$: completedTodosCount = completed_todos.current.length;
+	const completed_todos = $derived.by(() => {
+		return todos.current.filter((todo: Todo) => todo.completed);
+	});
 </script>
 
 <div class="flex flex-col gap-2">
 	<div class="flex flex-row">
 		<div class="rounded-md border-2 border-black bg-white px-2 py-1">
-			Counter of completed todos: {completedTodosCount}
+			Counter of completed todos: {completed_todos.length}
 		</div>
 		<div class="rounded-md border-2 border-black bg-white px-2 py-1">
-			Counter of completed todos: {completedTodosCount}
+			Counter of completed todos: {completed_todos.length}
 		</div>
 	</div>
 
 	<div class="flex flex-col gap-2 rounded-lg border-2 border-black bg-white p-4">
-		{#if completedTodosCount.current.length === 0}
-			<div class="text-gray-500">No todos found</div>
-		{/if}
-
-		{#each completed_todos.current as item (item.id)}
+		{#each completed_todos as item (item.id)}
 			<div
 				class="group mt-2 flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
 			>
@@ -51,11 +49,9 @@
 			</div>
 		{/each}
 
-		{#if completedTodosCount > 0}
-			<button on:click={clearCompletedTodos} class="mt-2 text-sm text-red-600 hover:text-red-800">
-				Delete {completedTodosCount} completed
-			</button>
-		{/if}
+		<button onclick={clearCompletedTodos} class="mt-2 text-sm text-red-600 hover:text-red-800">
+			Delete {completed_todos.lenght} completed
+		</button>
 	</div>
 </div>
 

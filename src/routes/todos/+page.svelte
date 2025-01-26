@@ -8,7 +8,6 @@
 	import { v4 as uuidv4 } from 'uuid';
 
 	const todos = new LocalStorage('todos', []);
-	const completed_todos = new LocalStorage('completed_todos', []);
 	let newTodoText = '';
 	let dueDate = new Date();
 
@@ -28,7 +27,8 @@
 					name: newTodoText,
 					priority: 1,
 					context: 'normal',
-					due: dueDate
+					due: dueDate,
+					hidden: false
 				},
 				...todos.current
 			];
@@ -45,12 +45,10 @@
 	}
 
 	function clearCompletedTodos() {
-		completed_todos.current = [
-			...completed_todos.current,
-			...todos.current.filter((todo: Todo) => todo.completed)
-		];
-
-		todos.current = todos.current.filter((todo: Todo) => !todo.completed);
+		// flip the completed todos to hidden
+		todos.current = todos.current.map((todo: Todo) =>
+			todo.completed ? { ...todo, hidden: true } : todo
+		);
 	}
 
 	function startEdit(todo: Todo) {
@@ -116,7 +114,9 @@
 
 	let currentFilter = 'Today';
 	// Count how many are completed
-	$: completedTodosCount = todos.current.filter((todo: Todo) => todo.completed).length;
+	$: completedTodosCount = todos.current.filter(
+		(todo: Todo) => todo.completed && !todo.hidden
+	).length;
 </script>
 
 <div class="flex flex-col gap-2">
@@ -207,7 +207,7 @@
 		>
 			{#each todos.current as item (item.id)}
 				<div animate:flip={{ duration: flipDurationMs }}>
-					{#if (currentFilter == 'Today' && isToday(new Date(item.due))) || (currentFilter == 'Tomorrow' && isTomorrow(new Date(item.due))) || (currentFilter == 'This week' && isThisWeek(new Date(item.due))) || (currentFilter == 'This month' && isThisMonth(new Date(item.due))) || currentFilter == 'All'}
+					{#if !item.hidden && ((currentFilter == 'Today' && isToday(new Date(item.due))) || (currentFilter == 'Tomorrow' && isTomorrow(new Date(item.due))) || (currentFilter == 'This week' && isThisWeek(new Date(item.due))) || (currentFilter == 'This month' && isThisMonth(new Date(item.due))) || currentFilter == 'All')}
 						<!-- Decide whether to show edit form or normal display -->
 						{#if editingId === item.id}
 							<!-- EDIT FORM -->

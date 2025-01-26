@@ -5,4 +5,5 @@ export type Todo = {
 	context: string;
 	due: Date;
 	completed: boolean;
+	hidden: boolean;
 };
