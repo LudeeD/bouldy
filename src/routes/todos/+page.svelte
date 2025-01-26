@@ -8,6 +8,7 @@
 	import { v4 as uuidv4 } from 'uuid';
 
 	const todos = new LocalStorage('todos', []);
+	const completed_todos = new LocalStorage('completed_todos', []);
 	let newTodoText = '';
 	let dueDate = new Date();
 
@@ -44,6 +45,11 @@
 	}
 
 	function clearCompletedTodos() {
+		completed_todos.current = [
+			...completed_todos.current,
+			...todos.current.filter((todo: Todo) => todo.completed)
+		];
+
 		todos.current = todos.current.filter((todo: Todo) => !todo.completed);
 	}
 
@@ -160,6 +166,12 @@
 					currentFilter = 'All';
 				}}
 			/>
+			<a
+				href="/todos/stats"
+				class={'ml-auto rounded-lg border-2 border-transparent p-2 decoration-2 underline-offset-8 hover:underline'}
+			>
+				📊 Stats
+			</a>
 		</ul>
 	</nav>
 
