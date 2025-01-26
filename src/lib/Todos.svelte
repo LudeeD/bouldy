@@ -4,7 +4,8 @@
 	import type { Todo } from './types';
 	import { DateInput } from 'date-picker-svelte';
 	import { flip } from 'svelte/animate';
-	import { dndzone } from 'svelte-dnd-action';
+	import { dragHandle, dragHandleZone } from 'svelte-dnd-action';
+	import { v4 as uuidv4 } from 'uuid';
 
 	const todos = new LocalStorage('todos', []);
 
@@ -14,9 +15,7 @@
 	function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 
-		const next_id = todos.current.length
-			? Math.max(...todos.current.map((todo: Todo) => todo.id)) + 1
-			: 1;
+		const next_id = uuidv4();
 
 		if (newTodoText.trim()) {
 			todos.current = [
@@ -160,36 +159,56 @@
 		{/if}
 
 		<section
-			use:dndzone={{ items: todos.current, flipDurationMs }}
+			use:dragHandleZone={{ items: todos.current, flipDurationMs }}
 			onconsider={handleDndConsider}
 			onfinalize={handleDndFinalize}
-			class="flex flex-col gap-2"
+			class="flex flex-col"
 		>
 			{#each todos.current as item (item.id)}
 				<div animate:flip={{ duration: flipDurationMs }}>
 					{#if (currentFilter == 'Today' && isToday(new Date(item.due))) || (currentFilter == 'Tomorrow' && isTomorrow(new Date(item.due))) || (currentFilter == 'This week' && isThisWeek(new Date(item.due))) || (currentFilter == 'This month' && isThisMonth(new Date(item.due))) || currentFilter == 'All'}
 						<div
-							class="flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
+							class="mt-2 flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
 						>
 							<div class="flex items-center space-x-2">
-								<input
-									type="checkbox"
-									class="form-checkbox"
-									checked={item.completed}
-									onchange={() => toggleTodo(item.id)}
-								/>
-								<span class:line-through={item.completed}>{item.name}</span>
+								<div use:dragHandle aria-label="drag-handle for {item.text}" class="handle">
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke-width="1.5"
+										stroke="currentColor"
+										class="size-6"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z"
+										/>
+									</svg>
+								</div>
+								<div class="flex items-center space-x-2">
+									<input
+										type="checkbox"
+										class="form-checkbox"
+										checked={item.completed}
+										onchange={() => toggleTodo(item.id)}
+									/>
+									<span class:line-through={item.completed}>{item.name}</span>
+								</div>
 							</div>
 
-							<span
-								class="text-sm"
-								class:text-red-500={new Date().setHours(0, 0, 0, 0) >
-									new Date(item.due).setHours(0, 0, 0, 0)}
-								class:text-gray-500={new Date().setHours(0, 0, 0, 0) <=
-									new Date(item.due).setHours(0, 0, 0, 0)}
-							>
-								{new Date(item.due).toLocaleDateString('en-GB')}
-							</span>
+							<div class="ml-auto">
+								<span
+									class="text-sm"
+									class:text-red-500={new Date().setHours(0, 0, 0, 0) >
+										new Date(item.due).setHours(0, 0, 0, 0)}
+									class:text-gray-500={new Date().setHours(0, 0, 0, 0) <=
+										new Date(item.due).setHours(0, 0, 0, 0)}
+								>
+									{new Date(item.due).toLocaleDateString('en-GB')}
+								</span>
+							</div>
 						</div>
 					{/if}
 				</div>
