@@ -7,15 +7,22 @@
 	import { dragHandle, dragHandleZone } from 'svelte-dnd-action';
 	import { v4 as uuidv4 } from 'uuid';
 
+	// LocalStorage store
 	const todos = new LocalStorage('todos', []);
 
+	// -- New/Edited fields
 	let newTodoText = $state('');
-	let dueDate = $state(new Date()); // Initialize with today's date
+	let dueDate = $state(new Date());
+
+	// -- Editing states
+	let editingId: string | null = $state(null); // which todo is being edited
+	let editingText = $state(''); // text for the todo being edited
+	let editingDueDate = $state(new Date()); // due date for the todo being edited
 
 	function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 
-		const next_id = uuidv4();
+		const next_id = uuidv4(); // store string ID
 
 		if (newTodoText.trim()) {
 			todos.current = [
@@ -35,7 +42,7 @@
 		}
 	}
 
-	function toggleTodo(id: number) {
+	function toggleTodo(id: string) {
 		todos.current = todos.current.map((todo: Todo) =>
 			todo.id === id ? { ...todo, completed: !todo.completed } : todo
 		);
@@ -44,6 +51,35 @@
 	function clearCompletedTodos() {
 		todos.current = todos.current.filter((todo: Todo) => !todo.completed);
 	}
+
+	// -- Editing helpers
+	function startEdit(todo: Todo) {
+		editingId = todo.id;
+		editingText = todo.name;
+		editingDueDate = new Date(todo.due);
+	}
+
+	function saveEdit(id: string) {
+		todos.current = todos.current.map((todo: Todo) => {
+			if (todo.id === id) {
+				return {
+					...todo,
+					name: editingText.trim(),
+					due: editingDueDate
+				};
+			}
+			return todo;
+		});
+		cancelEdit();
+	}
+
+	function cancelEdit() {
+		editingId = null;
+		editingText = '';
+		editingDueDate = new Date();
+	}
+
+	// svelte-dnd-action
 	const flipDurationMs = 300;
 	function handleDndConsider(e) {
 		todos.current = e.detail.items;
@@ -52,6 +88,7 @@
 		todos.current = e.detail.items;
 	}
 
+	// Filters
 	function isToday(date: Date) {
 		const today = new Date();
 		return (
@@ -79,7 +116,7 @@
 		return date.getMonth() <= today.getMonth() && date.getFullYear() <= today.getFullYear();
 	}
 
-	let currentFilter = $state('Today'); // Track current filter
+	let currentFilter = $state('Today');
 
 	let completedTodosCount = $derived(todos.current.filter((todo: Todo) => todo.completed).length);
 </script>
@@ -135,6 +172,7 @@
 	</nav>
 
 	<div class="flex flex-col gap-2 rounded-lg border-2 border-black bg-white p-4">
+		<!-- Add new todos -->
 		<form onsubmit={handleSubmit}>
 			<div class="flex flex-wrap gap-2">
 				<input
@@ -154,10 +192,12 @@
 			</div>
 		</form>
 
+		<!-- If no todos, show some placeholder text -->
 		{#if todos.current.length === 0}
 			<div class="text-gray-500">No todos found</div>
 		{/if}
 
+		<!-- Todo list -->
 		<section
 			use:dragHandleZone={{ items: todos.current, flipDurationMs }}
 			onconsider={handleDndConsider}
@@ -166,57 +206,100 @@
 		>
 			{#each todos.current as item (item.id)}
 				<div animate:flip={{ duration: flipDurationMs }}>
+					<!-- Filter check -->
 					{#if (currentFilter == 'Today' && isToday(new Date(item.due))) || (currentFilter == 'Tomorrow' && isTomorrow(new Date(item.due))) || (currentFilter == 'This week' && isThisWeek(new Date(item.due))) || (currentFilter == 'This month' && isThisMonth(new Date(item.due))) || currentFilter == 'All'}
-						<div
-							class="mt-2 flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
-						>
-							<div class="flex items-center space-x-2">
-								<div use:dragHandle aria-label="drag-handle for {item.text}" class="handle">
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke-width="1.5"
-										stroke="currentColor"
-										class="size-6"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z"
-										/>
-									</svg>
-								</div>
-								<div class="flex items-center space-x-2">
+						<!-- Editing form vs. display -->
+						{#if editingId === item.id}
+							<!-- EDITING MODE -->
+							<div
+								class="mt-2 flex items-center justify-between space-x-2 rounded border bg-blue-50 p-2"
+							>
+								<form class="flex flex-wrap items-center gap-2" onsubmit={() => saveEdit(item.id)}>
 									<input
-										type="checkbox"
-										class="form-checkbox"
-										checked={item.completed}
-										onchange={() => toggleTodo(item.id)}
+										type="text"
+										bind:value={editingText}
+										class="rounded border p-1 text-black"
+										placeholder="Edit todo text"
 									/>
-									<span class:line-through={item.completed}>{item.name}</span>
+									<DateInput bind:value={editingDueDate} format="yyyy-MM-dd" class="bg-blue-100" />
+									<button
+										type="submit"
+										class="rounded bg-green-600 px-2 py-1 text-white hover:bg-green-700"
+									>
+										Save
+									</button>
+									<button
+										type="button"
+										onclick={cancelEdit}
+										class="rounded bg-gray-400 px-2 py-1 text-white hover:bg-gray-500"
+									>
+										Cancel
+									</button>
+								</form>
+							</div>
+						{:else}
+							<!-- NORMAL DISPLAY -->
+							<div
+								class="mt-2 flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
+							>
+								<div class="flex items-center space-x-2">
+									<div use:dragHandle aria-label="drag-handle" class="handle">
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke-width="1.5"
+											stroke="currentColor"
+											class="size-6"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M12 6.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 12.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5ZM12 18.75a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5Z"
+											/>
+										</svg>
+									</div>
+									<div class="flex items-center space-x-2">
+										<input
+											type="checkbox"
+											class="form-checkbox"
+											checked={item.completed}
+											onchange={() => toggleTodo(item.id)}
+										/>
+										<span class:line-through={item.completed}>{item.name}</span>
+									</div>
+								</div>
+
+								<div class="ml-auto flex items-center gap-2">
+									<!-- Display due date; if it's past due, make it red -->
+									<span
+										class="text-sm"
+										class:text-red-500={new Date().setHours(0, 0, 0, 0) >
+											new Date(item.due).setHours(0, 0, 0, 0)}
+										class:text-gray-500={new Date().setHours(0, 0, 0, 0) <=
+											new Date(item.due).setHours(0, 0, 0, 0)}
+									>
+										{new Date(item.due).toLocaleDateString('en-GB')}
+									</span>
+
+									<!-- Edit button -->
+									<button
+										onclick={() => startEdit(item)}
+										class="rounded bg-yellow-500 px-2 py-1 text-white hover:bg-yellow-600"
+									>
+										Edit
+									</button>
 								</div>
 							</div>
-
-							<div class="ml-auto">
-								<span
-									class="text-sm"
-									class:text-red-500={new Date().setHours(0, 0, 0, 0) >
-										new Date(item.due).setHours(0, 0, 0, 0)}
-									class:text-gray-500={new Date().setHours(0, 0, 0, 0) <=
-										new Date(item.due).setHours(0, 0, 0, 0)}
-								>
-									{new Date(item.due).toLocaleDateString('en-GB')}
-								</span>
-							</div>
-						</div>
+						{/if}
 					{/if}
 				</div>
 			{/each}
 		</section>
 
+		<!-- If there are completed todos, show clear-completed button -->
 		{#if completedTodosCount > 0}
-			<button onclick={clearCompletedTodos} class="text-sm text-red-600 hover:text-red-800">
+			<button onclick={clearCompletedTodos} class="mt-2 text-sm text-red-600 hover:text-red-800">
 				Clear {completedTodosCount} completed
 			</button>
 		{/if}
