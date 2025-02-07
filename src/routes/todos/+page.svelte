@@ -1,11 +1,11 @@
 <script lang="ts">
-	import NavLi from '$lib/atoms/nav-li.svelte';
 	import { LocalStorage } from '$lib/storage.svelte';
 	import type { Todo } from '$lib/types';
 	import { DateInput } from 'date-picker-svelte';
 	import { flip } from 'svelte/animate';
 	import { dragHandle, dragHandleZone } from 'svelte-dnd-action';
 	import { v4 as uuidv4 } from 'uuid';
+	import { fade, slide } from 'svelte/transition';
 
 	const todos = new LocalStorage('todos', []);
 	let newTodoText = '';
@@ -23,12 +23,13 @@
 			todos.current = [
 				{
 					id: next_id,
-					completed: false,
 					name: newTodoText,
 					priority: 1,
-					context: 'normal',
+					context: '',
 					due: dueDate,
-					hidden: false
+					hidden_at: null,
+					completed_at: null,
+					children: []
 				},
 				...todos.current
 			];
@@ -40,14 +41,14 @@
 
 	function toggleTodo(id: string) {
 		todos.current = todos.current.map((todo: Todo) =>
-			todo.id === id ? { ...todo, completed: !todo.completed } : todo
+			todo.id === id ? { ...todo, completed_at: new Date() } : todo
 		);
 	}
 
-	function clearCompletedTodos() {
+	function hideCurrentCompletedTodos() {
 		// flip the completed todos to hidden
 		todos.current = todos.current.map((todo: Todo) =>
-			todo.completed ? { ...todo, hidden: true } : todo
+			todo.completed_at ? { ...todo, hidden_at: new Date() } : todo
 		);
 	}
 
@@ -78,101 +79,93 @@
 	}
 
 	const flipDurationMs = 300;
-	function handleDndConsider(e) {
+	function handleDndConsider(e: CustomEvent) {
 		todos.current = e.detail.items;
 	}
-	function handleDndFinalize(e) {
+	function handleDndFinalize(e: CustomEvent) {
 		todos.current = e.detail.items;
 	}
 
-	function isToday(date: Date) {
-		const today = new Date();
-		return (
-			date.getDate() <= today.getDate() &&
-			date.getMonth() <= today.getMonth() &&
-			date.getFullYear() <= today.getFullYear()
-		);
-	}
 
-	function isTomorrow(date: Date) {
-		const tomorrow = new Date();
-		tomorrow.setDate(tomorrow.getDate() + 1);
-		return date <= tomorrow;
-	}
-
-	function isThisWeek(date: Date) {
+	function isFuture(date: Date) {
 		const today = new Date();
-		const weekEnd = new Date(today);
-		weekEnd.setDate(today.getDate() + (7 - today.getDay()));
-		return date <= weekEnd;
-	}
-
-	function isThisMonth(date: Date) {
-		const today = new Date();
-		return date.getMonth() <= today.getMonth() && date.getFullYear() <= today.getFullYear();
+		today.setHours(0, 0, 0, 0);
+		const compareDate = new Date(date);
+		compareDate.setHours(0, 0, 0, 0);
+		return compareDate > today;
 	}
 
 	let currentFilter = 'Today';
 	// Count how many are completed
 	$: completedTodosCount = todos.current.filter(
-		(todo: Todo) => todo.completed && !todo.hidden
+		(todo: Todo) => todo.completed_at && !todo.hidden_at
 	).length;
+
+	function sortByDueDate() {
+		todos.current = todos.current.sort((a: Todo, b: Todo) => {
+			// First compare completion status
+			if (a.completed_at !== b.completed_at) {
+				return a.completed_at ? 1 : -1; // Incomplete items come first
+			}
+			// Then sort by due date (most recent first)
+			return new Date(a.due).getTime() - new Date(b.due).getTime();
+		});
+	}
+
+
 </script>
 
 <div class="flex flex-col gap-2">
 	<nav class="rounded-lg border-2 border-black bg-blue-600 p-2">
-		<ul class="flex flex-wrap gap-4 text-black">
-			<NavLi
-				text="Today"
-				selected={currentFilter === 'Today'}
-				onclick={() => {
-					currentFilter = 'Today';
-					dueDate = new Date();
-				}}
-			/>
-			<NavLi
-				text="Tomorrow"
-				selected={currentFilter === 'Tomorrow'}
-				onclick={() => {
-					currentFilter = 'Tomorrow';
-					const tomorrow = new Date();
-					tomorrow.setDate(tomorrow.getDate() + 1);
-					dueDate = tomorrow;
-				}}
-			/>
-			<NavLi
-				text="This week"
-				selected={currentFilter === 'This week'}
-				onclick={() => {
-					currentFilter = 'This week';
-					const weekEnd = new Date();
-					weekEnd.setDate(weekEnd.getDate() + (7 - weekEnd.getDay()));
-					dueDate = weekEnd;
-				}}
-			/>
-			<NavLi
-				text="This month"
-				selected={currentFilter === 'This month'}
-				onclick={() => {
-					currentFilter = 'This month';
-					const lastDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
-					dueDate = lastDayOfMonth;
-				}}
-			/>
-			<NavLi
-				text="All"
-				selected={currentFilter === 'All'}
-				onclick={() => {
-					currentFilter = 'All';
-				}}
-			/>
-			<a
-				href="/todos/stats"
-				class={'ml-auto rounded-lg border-2 border-transparent p-2 decoration-2 underline-offset-8 hover:underline'}
-			>
-				📊 Stats
-			</a>
-		</ul>
+		<div class="flex justify-between gap-4 text-black">
+			<div class="flex gap-4">
+				<button
+					type="button"
+					role="tab"
+					aria-selected={currentFilter === 'Today'}
+					on:click={() => {
+						currentFilter = 'Today';
+						dueDate = new Date();
+					}}
+					class={currentFilter === 'Today'
+						? 'rounded-lg border-2 border-black p-2'
+						: 'rounded-lg border-2 border-transparent p-2 decoration-2 underline-offset-8 hover:underline'}
+				>
+					{'Today'}
+				</button>
+				<button
+					type="button"
+					role="tab"
+					aria-selected={currentFilter === 'Not Today'}
+					on:click={() => {
+						currentFilter = 'Not Today';
+						const tomorrow = new Date();
+						tomorrow.setDate(tomorrow.getDate() + 1);
+						dueDate = tomorrow;
+					}}
+					class={currentFilter === 'Not Today'
+						? 'rounded-lg border-2 border-black p-2'
+						: 'rounded-lg border-2 border-transparent p-2 decoration-2 underline-offset-8 hover:underline'}
+				>
+					{'Not Today'}
+				</button>
+			</div>
+			<div class="flex gap-4">
+				<button
+					on:click={sortByDueDate}
+					class={'ml-auto rounded-lg border-2 border-transparent p-2 decoration-2 underline-offset-8 hover:underline'}
+				>
+					Sort ↓
+				</button>
+
+				<a
+					href="/todos/stats"
+					class={'rounded-lg border-2 border-transparent p-2 decoration-2 underline-offset-8 hover:underline'}
+				>
+					📊 Stats
+				</a>
+			</div>
+		</div>
 	</nav>
 
 	<div class="flex flex-col gap-2 rounded-lg border-2 border-black bg-white p-4">
@@ -184,7 +177,11 @@
 					placeholder="Add a new todo..."
 					class="flex-1 rounded border p-2 focus:border-blue-500 focus:outline-none"
 				/>
-				<DateInput bind:value={dueDate} class="w-fit self-center bg-blue-500" format="yyyy-MM-dd" />
+				{#if currentFilter === 'Not Today'}
+					<div transition:fade={{ duration: 200 }}>
+						<DateInput bind:value={dueDate} class="w-fit" format="yyyy-MM-dd" />
+					</div>
+				{/if}
 				<button
 					type="submit"
 					class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none"
@@ -207,7 +204,7 @@
 		>
 			{#each todos.current as item (item.id)}
 				<div animate:flip={{ duration: flipDurationMs }}>
-					{#if !item.hidden && ((currentFilter == 'Today' && isToday(new Date(item.due))) || (currentFilter == 'Tomorrow' && isTomorrow(new Date(item.due))) || (currentFilter == 'This week' && isThisWeek(new Date(item.due))) || (currentFilter == 'This month' && isThisMonth(new Date(item.due))) || currentFilter == 'All')}
+					{#if !item.hidden_at && ((currentFilter === 'Today' && !isFuture(new Date(item.due))) || (currentFilter === 'Not Today' && isFuture(new Date(item.due))))}
 						<!-- Decide whether to show edit form or normal display -->
 						{#if editingId === item.id}
 							<!-- EDIT FORM -->
@@ -248,8 +245,9 @@
 							-->
 							<div
 								class="group mt-2 flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
+								class:opacity-50={item.completed_at}
 							>
-								<div class="flex items-center space-x-2">
+								<div class="flex items-center space-x-2" >
 									<div use:dragHandle aria-label="drag-handle" class="handle">
 										<svg
 											xmlns="http://www.w3.org/2000/svg"
@@ -270,7 +268,7 @@
 										<input
 											type="checkbox"
 											class="form-checkbox"
-											checked={item.completed}
+											checked={item.completed_at}
 											on:change={() => toggleTodo(item.id)}
 										/>
 										<span class:line-through={item.completed}>{item.name}</span>
@@ -306,12 +304,14 @@
 									</button>
 									<span
 										class="text-sm"
-										class:text-red-500={new Date().setHours(0, 0, 0, 0) >
+										class:text-red-500={!item.completed && new Date().setHours(0, 0, 0, 0) >
 											new Date(item.due).setHours(0, 0, 0, 0)}
-										class:text-gray-500={new Date().setHours(0, 0, 0, 0) <=
+										class:text-gray-500={item.completed || new Date().setHours(0, 0, 0, 0) <=
 											new Date(item.due).setHours(0, 0, 0, 0)}
 									>
-										{new Date(item.due).toLocaleDateString('en-GB')}
+										{#if currentFilter === 'Not Today' || new Date(item.due).toDateString() !== new Date().toDateString()}
+											{new Date(item.due).toLocaleDateString('en-GB')}
+										{/if}
 									</span>
 								</div>
 							</div>
@@ -322,8 +322,11 @@
 		</section>
 
 		{#if completedTodosCount > 0}
-			<button on:click={clearCompletedTodos} class="mt-2 text-sm text-red-600 hover:text-red-800">
-				Clear {completedTodosCount} completed
+			<button
+				on:click={hideCurrentCompletedTodos}
+				class="mt-2 text-sm text-red-600 hover:text-red-800"
+			>
+				Hide {completedTodosCount} completed
 			</button>
 		{/if}
 	</div>

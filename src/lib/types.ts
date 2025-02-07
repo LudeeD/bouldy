@@ -4,6 +4,7 @@ export type Todo = {
 	priority: number;
 	context: string;
 	due: Date;
-	completed: boolean;
-	hidden: boolean;
+	hidden_at: Date | null;
+	completed_at: Date | null;
+	children: Todo[];
 };
