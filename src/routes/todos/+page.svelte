@@ -41,7 +41,7 @@
 
 	function toggleTodo(id: string) {
 		todos.current = todos.current.map((todo: Todo) =>
-			todo.id === id ? { ...todo, completed_at: new Date() } : todo
+			todo.id === id ? { ...todo, completed_at: todo.completed_at ? null : new Date() } : todo
 		);
 	}
 
@@ -271,7 +271,7 @@
 											checked={item.completed_at}
 											on:change={() => toggleTodo(item.id)}
 										/>
-										<span class:line-through={item.completed}>{item.name}</span>
+										<span class:line-through={item.completed_at}>{item.name}</span>
 									</div>
 								</div>
 
