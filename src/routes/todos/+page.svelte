@@ -23,7 +23,6 @@
 			id: item.id,
 			changes: { position: items.length - index }
 		}));
-
 		await db.transaction('rw', db.tasks, async () => {
 			await Promise.all(updates.map((update) => db.tasks.update(update.id, update.changes)));
 		});
@@ -393,7 +392,7 @@
 											new Date().setHours(0, 0, 0, 0) <= new Date(item.due).setHours(0, 0, 0, 0)}
 									>
 										{#if currentFilter === 'Not Today' || new Date(item.due).toDateString() !== new Date().toDateString()}
-											{new Date(item.due).toLocaleDateString('en-GB')}
+										{new Date(item.due).toLocaleDateString('en-GB')}
 										{/if}
 									</span>
 								</div>

@@ -7,5 +7,5 @@
 			<a href="/notepad" class="decoration-2 underline-offset-8 hover:underline">Notepad</a>
 		</li>
 	</ul>
-	<span class="mt-4 text-right"> Made with ❤️ by <a href="https://github.com/ludeed" class="decoration-2 underline-offset-8 hover:underline">ludeed</a></span>
+	<span class="mt-4 text-right"> Made with <a href="/debug">❤️</a> by <a href="https://github.com/ludeed" class="decoration-2 underline-offset-8 hover:underline">ludeed</a></span>
 </nav>
