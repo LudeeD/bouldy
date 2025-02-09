@@ -1,74 +1,124 @@
 <script lang="ts">
-	import { LocalStorage } from '$lib/storage.svelte';
-	import type { Todo } from '$lib/types';
+	import { dragHandle, dragHandleZone } from 'svelte-dnd-action';
 	import { DateInput } from 'date-picker-svelte';
 	import { flip } from 'svelte/animate';
-	import { dragHandle, dragHandleZone } from 'svelte-dnd-action';
 	import { v4 as uuidv4 } from 'uuid';
-	import { fade, slide } from 'svelte/transition';
+	import { fade } from 'svelte/transition';
+	import { onMount } from 'svelte';
+	import { db, type Task } from '$lib/db';
 
-	const todos = new LocalStorage('todos', []);
+	let items: Task[] = [];
+	let showSavedNotification = false;
+
+	async function loadItems() {
+		items = await db.tasks
+			.orderBy('position')
+			.reverse()
+			.filter((task) => !task.hidden_at)
+			.toArray();
+	}
+
+	async function updateDbOrder() {
+		const updates = items.map((item, index) => ({
+			id: item.id,
+			changes: { position: items.length - index }
+		}));
+		
+		await db.transaction('rw', db.tasks, async () => {
+			await Promise.all(updates.map(update => 
+				db.tasks.update(update.id, update.changes)
+			));
+		});
+
+		// Show notification
+		showSavedNotification = true;
+		setTimeout(() => {
+			showSavedNotification = false;
+		}, 2000); // Hide after 2 seconds
+	}
+
+	async function handleDndFinalizeToIndexedDB(event: CustomEvent) {
+		// The event.detail.items contains the new order
+		// (this is provided by svelte-dnd-action).
+		items = event.detail.items;
+
+		// 4. Update the order property for each item in the DB
+		await updateDbOrder();
+
+		await loadItems();
+		console.log('loaded items', items);
+	}
+
+	function handleDndConsiderToIndexedDB(event: CustomEvent) {
+		items = event.detail.items;
+	}
+
+	onMount(loadItems);
+
 	let newTodoText = '';
 	let dueDate = new Date();
-
 	let editingId: string | null = null;
 	let editingText = '';
 	let editingDueDate = new Date();
 
-	function handleSubmit(event: SubmitEvent) {
+	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
 
-		const next_id = uuidv4();
+		const position = items.length;
 		if (newTodoText.trim()) {
-			todos.current = [
-				{
-					id: next_id,
-					name: newTodoText,
-					priority: 1,
-					context: '',
-					due: dueDate,
-					hidden_at: null,
-					completed_at: null,
-					children: []
-				},
-				...todos.current
-			];
+			const id = await db.tasks.add({
+				id: uuidv4(),
+				name: newTodoText,
+				due: dueDate,
+				completed_at: null,
+				hidden_at: null,
+				position: position,
+				priority: 0,
+				context: '',
+				parent: null
+			});
 
 			newTodoText = '';
 			dueDate = new Date();
 		}
+
+		await loadItems();
 	}
 
 	function toggleTodo(id: string) {
-		todos.current = todos.current.map((todo: Todo) =>
-			todo.id === id ? { ...todo, completed_at: todo.completed_at ? null : new Date() } : todo
-		);
+		console.log('toggleTodo', id);
+
+		//todos.current = todos.current.map((todo: Todo) =>
+		//	todo.id === id ? { ...todo, completed_at: todo.completed_at ? null : new Date() } : todo
+		//);
 	}
 
 	function hideCurrentCompletedTodos() {
 		// flip the completed todos to hidden
-		todos.current = todos.current.map((todo: Todo) =>
-			todo.completed_at ? { ...todo, hidden_at: new Date() } : todo
-		);
+		//todos.current = todos.current.map((todo: Todo) =>
+		//	todo.completed_at ? { ...todo, hidden_at: new Date() } : todo
+		//);
+		console.log('hideCurrentCompletedTodos');
 	}
 
-	function startEdit(todo: Todo) {
+	function startEdit(todo: Task) {
 		editingId = todo.id;
 		editingText = todo.name;
 		editingDueDate = new Date(todo.due);
 	}
 
 	function saveEdit(id: string) {
-		todos.current = todos.current.map((todo: Todo) => {
-			if (todo.id === id) {
-				return {
-					...todo,
-					name: editingText.trim(),
-					due: editingDueDate
-				};
-			}
-			return todo;
-		});
+		//todos.current = todos.current.map((todo: Todo) => {
+		//	if (todo.id === id) {
+		//		return {
+		//			...todo,
+		//			name: editingText.trim(),
+		//			due: editingDueDate
+		//		};
+		//	}
+		//	return todo;
+		//});
+		console.log('saveEdit', id);
 		cancelEdit();
 	}
 
@@ -80,12 +130,13 @@
 
 	const flipDurationMs = 300;
 	function handleDndConsider(e: CustomEvent) {
-		todos.current = e.detail.items;
+		//todos.current = e.detail.items;
+		console.log('handleDndConsider', e.detail.items);
 	}
 	function handleDndFinalize(e: CustomEvent) {
-		todos.current = e.detail.items;
+		//todos.current = e.detail.items;
+		console.log('handleDndFinalize', e.detail.items);
 	}
-
 
 	function isFuture(date: Date) {
 		const today = new Date();
@@ -97,22 +148,21 @@
 
 	let currentFilter = 'Today';
 	// Count how many are completed
-	$: completedTodosCount = todos.current.filter(
-		(todo: Todo) => todo.completed_at && !todo.hidden_at
-	).length;
+	//$: completedTodosCount = todos.current.filter(
+	//	(todo: Todo) => todo.completed_at && !todo.hidden_at
+	//).length;
 
 	function sortByDueDate() {
-		todos.current = todos.current.sort((a: Todo, b: Todo) => {
-			// First compare completion status
-			if (a.completed_at !== b.completed_at) {
-				return a.completed_at ? 1 : -1; // Incomplete items come first
-			}
-			// Then sort by due date (most recent first)
-			return new Date(a.due).getTime() - new Date(b.due).getTime();
-		});
+		//todos.current = todos.current.sort((a: Todo, b: Todo) => {
+		//	// First compare completion status
+		//	if (a.completed_at !== b.completed_at) {
+		//		return a.completed_at ? 1 : -1; // Incomplete items come first
+		//	}
+		//	// Then sort by due date (most recent first)
+		//	return new Date(a.due).getTime() - new Date(b.due).getTime();
+		//});
+		console.log('sortByDueDate');
 	}
-
-
 </script>
 
 <div class="flex flex-col gap-2">
@@ -192,17 +242,17 @@
 			</div>
 		</form>
 
-		{#if todos.current.length === 0}
+		{#if items.length === 0}
 			<div class="text-gray-500">No todos found</div>
 		{/if}
 
 		<section
-			use:dragHandleZone={{ items: todos.current, flipDurationMs }}
-			on:consider={handleDndConsider}
-			on:finalize={handleDndFinalize}
+			use:dragHandleZone={{ items, flipDurationMs }}
+			on:finalize={handleDndFinalizeToIndexedDB}
+			on:consider={handleDndConsiderToIndexedDB}
 			class="flex flex-col"
 		>
-			{#each todos.current as item (item.id)}
+			{#each items as item (item.id)}
 				<div animate:flip={{ duration: flipDurationMs }}>
 					{#if !item.hidden_at && ((currentFilter === 'Today' && !isFuture(new Date(item.due))) || (currentFilter === 'Not Today' && isFuture(new Date(item.due))))}
 						<!-- Decide whether to show edit form or normal display -->
@@ -247,7 +297,7 @@
 								class="group mt-2 flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
 								class:opacity-50={item.completed_at}
 							>
-								<div class="flex items-center space-x-2" >
+								<div class="flex items-center space-x-2">
 									<div use:dragHandle aria-label="drag-handle" class="handle">
 										<svg
 											xmlns="http://www.w3.org/2000/svg"
@@ -268,7 +318,7 @@
 										<input
 											type="checkbox"
 											class="form-checkbox"
-											checked={item.completed_at}
+											checked={item.completed_at !== null}
 											on:change={() => toggleTodo(item.id)}
 										/>
 										<span class:line-through={item.completed_at}>{item.name}</span>
@@ -304,10 +354,10 @@
 									</button>
 									<span
 										class="text-sm"
-										class:text-red-500={!item.completed && new Date().setHours(0, 0, 0, 0) >
-											new Date(item.due).setHours(0, 0, 0, 0)}
-										class:text-gray-500={item.completed || new Date().setHours(0, 0, 0, 0) <=
-											new Date(item.due).setHours(0, 0, 0, 0)}
+										class:text-red-500={!item.completed_at &&
+											new Date().setHours(0, 0, 0, 0) > new Date(item.due).setHours(0, 0, 0, 0)}
+										class:text-gray-500={item.completed_at ||
+											new Date().setHours(0, 0, 0, 0) <= new Date(item.due).setHours(0, 0, 0, 0)}
 									>
 										{#if currentFilter === 'Not Today' || new Date(item.due).toDateString() !== new Date().toDateString()}
 											{new Date(item.due).toLocaleDateString('en-GB')}
@@ -321,16 +371,25 @@
 			{/each}
 		</section>
 
-		{#if completedTodosCount > 0}
+		{#if 0 > 0}
 			<button
 				on:click={hideCurrentCompletedTodos}
 				class="mt-2 text-sm text-red-600 hover:text-red-800"
 			>
-				Hide {completedTodosCount} completed
+				Hide {0} completed
 			</button>
 		{/if}
 	</div>
 </div>
+
+{#if showSavedNotification}
+	<div
+		transition:fade
+		class="fixed bottom-4 right-4 rounded-lg bg-green-600 px-4 py-2 text-white shadow-lg"
+	>
+		Saved successfully
+	</div>
+{/if}
 
 <svelte:head>
 	<title>Bouldy</title>
