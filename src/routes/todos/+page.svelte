@@ -23,11 +23,9 @@
 			id: item.id,
 			changes: { position: items.length - index }
 		}));
-		
+
 		await db.transaction('rw', db.tasks, async () => {
-			await Promise.all(updates.map(update => 
-				db.tasks.update(update.id, update.changes)
-			));
+			await Promise.all(updates.map((update) => db.tasks.update(update.id, update.changes)));
 		});
 
 		// Show notification
@@ -82,23 +80,42 @@
 			dueDate = new Date();
 		}
 
+		showSavedNotification = true;
+		setTimeout(() => {
+			showSavedNotification = false;
+		}, 2000); // Hide after 2 seconds
+
 		await loadItems();
 	}
 
-	function toggleTodo(id: string) {
+	async function toggleTodo(id: string) {
 		console.log('toggleTodo', id);
 
-		//todos.current = todos.current.map((todo: Todo) =>
-		//	todo.id === id ? { ...todo, completed_at: todo.completed_at ? null : new Date() } : todo
-		//);
+		const task = items.find((item) => item.id === id);
+		if (!task) return;
+
+		await db.tasks.update(id, { completed_at: task.completed_at ? null : new Date() });
+		// Show notification
+		showSavedNotification = true;
+		setTimeout(() => {
+			showSavedNotification = false;
+		}, 2000); // Hide after 2 seconds
+
+		await loadItems();
 	}
 
-	function hideCurrentCompletedTodos() {
-		// flip the completed todos to hidden
-		//todos.current = todos.current.map((todo: Todo) =>
-		//	todo.completed_at ? { ...todo, hidden_at: new Date() } : todo
-		//);
+	async function hideCurrentCompletedTodos() {
 		console.log('hideCurrentCompletedTodos');
+
+		const completedTodos = items.filter((item) => item.completed_at && !item.hidden_at);
+
+		await db.transaction('rw', db.tasks, async () => {
+			await Promise.all(
+				completedTodos.map((todo) => db.tasks.update(todo.id, { hidden_at: new Date() }))
+			);
+		});
+
+		await loadItems();
 	}
 
 	function startEdit(todo: Task) {
@@ -107,18 +124,23 @@
 		editingDueDate = new Date(todo.due);
 	}
 
-	function saveEdit(id: string) {
-		//todos.current = todos.current.map((todo: Todo) => {
-		//	if (todo.id === id) {
-		//		return {
-		//			...todo,
-		//			name: editingText.trim(),
-		//			due: editingDueDate
-		//		};
-		//	}
-		//	return todo;
-		//});
-		console.log('saveEdit', id);
+	async function saveEdit(id: string) {
+		const task = items.find((item) => item.id === id);
+		if (!task) return;
+
+		await db.tasks.update(id, {
+			name: editingText.trim(),
+			due: editingDueDate
+		});
+
+		// Show notification
+		showSavedNotification = true;
+		setTimeout(() => {
+			showSavedNotification = false;
+		}, 2000); // Hide after 2 seconds
+
+		await loadItems();
+
 		cancelEdit();
 	}
 
@@ -126,16 +148,6 @@
 		editingId = null;
 		editingText = '';
 		editingDueDate = new Date();
-	}
-
-	const flipDurationMs = 300;
-	function handleDndConsider(e: CustomEvent) {
-		//todos.current = e.detail.items;
-		console.log('handleDndConsider', e.detail.items);
-	}
-	function handleDndFinalize(e: CustomEvent) {
-		//todos.current = e.detail.items;
-		console.log('handleDndFinalize', e.detail.items);
 	}
 
 	function isFuture(date: Date) {
@@ -148,20 +160,41 @@
 
 	let currentFilter = 'Today';
 	// Count how many are completed
-	//$: completedTodosCount = todos.current.filter(
-	//	(todo: Todo) => todo.completed_at && !todo.hidden_at
-	//).length;
+	$: completedTodosCount = items.filter(
+		(todo: Task) => todo.completed_at && !todo.hidden_at
+	).length;
 
-	function sortByDueDate() {
-		//todos.current = todos.current.sort((a: Todo, b: Todo) => {
-		//	// First compare completion status
-		//	if (a.completed_at !== b.completed_at) {
-		//		return a.completed_at ? 1 : -1; // Incomplete items come first
-		//	}
-		//	// Then sort by due date (most recent first)
-		//	return new Date(a.due).getTime() - new Date(b.due).getTime();
-		//});
-		console.log('sortByDueDate');
+	async function sortByDueDate() {
+		// First, sort the items by due date and completion status
+		const sortedItems = [...items].sort((a, b) => {
+			// Completed items go to the bottom
+			if (a.completed_at && !b.completed_at) return 1;
+			if (!a.completed_at && b.completed_at) return -1;
+			if (a.completed_at && b.completed_at) return 0;
+
+			// For incomplete items, sort by due date
+			const dateA = new Date(a.due);
+			const dateB = new Date(b.due);
+			return dateA.getTime() - dateB.getTime();
+		});
+
+		// Update positions based on the new sort order
+		const updates = sortedItems.map((item, index) => ({
+			id: item.id,
+			changes: { position: items.length - index }
+		}));
+
+		await db.transaction('rw', db.tasks, async () => {
+			await Promise.all(updates.map((update) => db.tasks.update(update.id, update.changes)));
+		});
+
+		// Show notification
+		showSavedNotification = true;
+		setTimeout(() => {
+			showSavedNotification = false;
+		}, 2000); // Hide after 2 seconds
+
+		await loadItems();
 	}
 </script>
 
@@ -205,7 +238,7 @@
 					on:click={sortByDueDate}
 					class={'ml-auto rounded-lg border-2 border-transparent p-2 decoration-2 underline-offset-8 hover:underline'}
 				>
-					Sort ↓
+					🧙 Sort
 				</button>
 
 				<a
@@ -247,13 +280,13 @@
 		{/if}
 
 		<section
-			use:dragHandleZone={{ items, flipDurationMs }}
+			use:dragHandleZone={{ items, flipDurationMs: 300 }}
 			on:finalize={handleDndFinalizeToIndexedDB}
 			on:consider={handleDndConsiderToIndexedDB}
 			class="flex flex-col"
 		>
 			{#each items as item (item.id)}
-				<div animate:flip={{ duration: flipDurationMs }}>
+				<div animate:flip={{ duration: 300 }}>
 					{#if !item.hidden_at && ((currentFilter === 'Today' && !isFuture(new Date(item.due))) || (currentFilter === 'Not Today' && isFuture(new Date(item.due))))}
 						<!-- Decide whether to show edit form or normal display -->
 						{#if editingId === item.id}
@@ -371,12 +404,12 @@
 			{/each}
 		</section>
 
-		{#if 0 > 0}
+		{#if completedTodosCount > 0}
 			<button
 				on:click={hideCurrentCompletedTodos}
 				class="mt-2 text-sm text-red-600 hover:text-red-800"
 			>
-				Hide {0} completed
+				Hide {completedTodosCount} completed
 			</button>
 		{/if}
 	</div>
