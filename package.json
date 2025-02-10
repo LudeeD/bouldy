@@ -37,6 +37,7 @@
 	"dependencies": {
 		"@tailwindcss/forms": "^0.5.9",
 		"@tailwindcss/typography": "^0.5.15",
+		"dexie": "^4.0.11",
 		"prosemirror-commands": "^1.6.2",
 		"prosemirror-keymap": "^1.2.2",
 		"prosemirror-model": "^1.24.1",

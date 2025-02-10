@@ -1,11 +1,23 @@
 <script lang="ts">
-	import { LocalStorage } from '$lib/storage.svelte';
-	import type { Todo } from '$lib/types';
+	import { db, type Task } from '$lib/db';
+	import { onMount } from 'svelte';
 
-	const todos = new LocalStorage('todos', []);
+	let todos = $state<Task[]>([]);
 
-	function clearCompletedTodos() {
-		todos.current = todos.current.filter((todo: Todo) => !todo.completed_at);
+	onMount(async () => {
+		todos = await db.tasks.toArray();
+	});
+
+	async function clearCompletedTodos() {
+		const completedIds = todos
+			.filter((todo: Task) => todo.completed_at)
+			.map(todo => todo.id);
+		
+		await db.transaction('rw', db.tasks, async () => {
+			await Promise.all(completedIds.map(id => db.tasks.delete(id)));
+		});
+		
+		todos = await db.tasks.toArray();
 	}
 
 	// Helper function to get date string (YYYY-MM-DD)
@@ -15,7 +27,7 @@
 
 	// Get todos completed in the last 7 days
 	const completed_todos = $derived.by(() => {
-		return todos.current.filter((todo: Todo) => todo.completed_at);
+		return todos.filter((todo: Task) => todo.completed_at);
 	});
 
 	// Calculate completion rate per day
@@ -24,7 +36,7 @@
 		const now = new Date();
 		const sevenDaysAgo = new Date(now.setDate(now.getDate() - 7));
 
-		completed_todos.forEach((todo: Todo) => {
+		completed_todos.forEach((todo: Task) => {
 			if (!todo.completed_at) return;
 			const dateStr = getDateString(todo.completed_at);
 			if (new Date(dateStr) >= sevenDaysAgo) {
@@ -40,8 +52,8 @@
 	// Calculate average completion time
 	const avgCompletionTime = $derived.by(() => {
 		const times = completed_todos
-			.filter((todo: Todo) => todo.completed_at)
-			.map((todo: Todo) => {
+			.filter((todo: Task) => todo.completed_at)
+			.map((todo: Task) => {
 				const created = new Date(todo.due);
 				const completed = new Date(todo.completed_at!);
 				return completed.getTime() - created.getTime();
@@ -57,11 +69,11 @@
 
 	// Calculate overdue rate
 	const overdueRate = $derived.by(() => {
-		const total = todos.current.length;
+		const total = todos.length;
 		if (total === 0) return 0;
 
-		const overdue = todos.current.filter(
-			(todo: Todo) => !todo.completed_at && new Date(todo.due) < new Date()
+		const overdue = todos.filter(
+			(todo: Task) => !todo.completed_at && new Date(todo.due) < new Date()
 		).length;
 
 		return Math.round((overdue / total) * 100);
@@ -69,7 +81,7 @@
 
 	// Calculate completion rate
 	const completionRate = $derived.by(() => {
-		const total = todos.current.length + completed_todos.length;
+		const total = todos.length;
 		if (total === 0) return 0;
 		return Math.round((completed_todos.length / total) * 100);
 	});
@@ -77,10 +89,12 @@
 	// Get busiest days
 	const busiestDays = $derived.by(() => {
 		const dayStats = new Map<string, number>();
-		todos.current.forEach((todo: Todo) => {
-			const dateStr = getDateString(todo.due);
-			dayStats.set(dateStr, (dayStats.get(dateStr) || 0) + 1);
-		});
+		todos
+			.filter((todo: Task) => !todo.completed_at)
+			.forEach((todo: Task) => {
+				const dateStr = getDateString(todo.due);
+				dayStats.set(dateStr, (dayStats.get(dateStr) || 0) + 1);
+			});
 
 		return Array.from(dayStats.entries())
 			.sort((a: [string, number], b: [string, number]) => b[1] - a[1])
@@ -118,7 +132,7 @@
 			<div class="flex flex-col gap-2">
 				<div>
 					<span class="text-gray-600">Total Todos:</span>
-					<span class="ml-2 font-semibold">{todos.current.length}</span>
+					<span class="ml-2 font-semibold">{todos.length}</span>
 				</div>
 				<div>
 					<span class="text-gray-600">Completed:</span>
@@ -197,8 +211,8 @@
 				>
 					<div class="flex items-center space-x-2">
 						<div class="flex items-center space-x-2">
-							<input type="checkbox" class="form-checkbox" checked={item.completed_at} disabled />
-							<span class:line-through={item.completed_at}>{item.name}</span>
+							<input type="checkbox" class="form-checkbox" checked={item.completed_at !== null} disabled />
+							<span class:line-through={item.completed_at !== null}>{item.name}</span>
 						</div>
 					</div>
 
