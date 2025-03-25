@@ -63,7 +63,7 @@
 
 		// Create a new subtask
 		const newSubtaskId = uuidv4();
-		const position = items.length;
+		const position = parentTask.position + 1;
 
 		await db.tasks.add({
 			id: newSubtaskId,
@@ -374,6 +374,11 @@
 							<div
 								class="group mt-2 flex items-center justify-between space-x-2 rounded border p-2 hover:bg-blue-50"
 								class:opacity-50={item.completed_at}
+								class:ml-8={item.parent}
+								class:border-l-4={item.parent}
+								class:border-l-blue-400={item.parent}
+								class:bg-blue-50={item.parent && !item.completed_at}
+								class:bg-gray-50={item.parent && item.completed_at}
 							>
 								<div class="flex items-center space-x-2">
 									<div use:dragHandle aria-label="drag-handle" class="handle">
@@ -407,6 +412,7 @@
 									<!-- Edit button is hidden by default, shown on hover -->
 
 									<button
+										hidden={!!item.parent}
 										on:click={() => breakTask(item.id)}
 										class="break-button px-2 py-1 opacity-0 group-hover:opacity-100"
 										aria-label="Break task into subtasks"
