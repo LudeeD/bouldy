@@ -7,5 +7,8 @@
 			<a href="/notepad" class="decoration-2 underline-offset-8 hover:underline">Notepad</a>
 		</li>
 	</ul>
-	<span class="mt-4 text-right"> Made with <a href="/debug">❤️</a> by <a href="https://github.com/ludeed" class="decoration-2 underline-offset-8 hover:underline">ludeed</a></span>
+	<div class="mt-4 flex justify-between text-sm text-gray-600">
+		<span>Built: {new Date(import.meta.env.BUILD_TIMESTAMP).toUTCString()}</span>
+		<span>Made with <a href="/debug">❤️</a> by <a href="https://github.com/ludeed" class="decoration-2 underline-offset-8 hover:underline">ludeed</a></span>
+	</div>
 </nav>
