@@ -7,7 +7,7 @@ Built with SvelteKit, and browser local storage.
 - Works offline
 - Saves your data on your browser
 
-<img src="https://github.com/user-attachments/assets/ab567c46-7be1-4053-8815-2985fdd96e0c" alt="Screenshot">
+<img src="https://github.com/user-attachments/assets/e9c9839e-e49a-42bf-a310-d2176e64e62a" alt="Screenshot">
 
 
 ##  Development
