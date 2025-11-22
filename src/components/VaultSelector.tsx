@@ -31,7 +31,7 @@ export default function VaultSelector({ onVaultSelected }: VaultSelectorProps) {
   return (
     <div className="min-h-screen bg-bg-dark flex items-center justify-center p-8">
       <div className="max-w-md w-full border-2 border-primary p-8 bg-bg">
-        <h1 className="text-3xl font-medium text-primary mb-2">Bouldy</h1>
+        <h1 className="text-3xl font-medium text-primary mb-2">🪨 Bouldy</h1>
         <p className="text-text-muted text-sm mb-8">
           A place for your thoughts
         </p>

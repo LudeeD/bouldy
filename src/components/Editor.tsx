@@ -238,7 +238,7 @@ export default function Editor() {
             {/* Editor Surface - Single unified surface */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Combined Header: Title + Toolbar */}
-              <div className="flex items-center justify-between px-4 py-2.5 border-b-2 border-border bg-bg-light">
+              <div className="h-20 flex items-center justify-between px-4 py-2.5 border-b-2 border-border bg-bg-light">
                 {/* Left: Title with save indicator */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   {editingTitle ? (

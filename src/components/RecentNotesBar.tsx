@@ -24,7 +24,7 @@ export default function RecentNotesBar({
   };
 
   return (
-    <div className="w-full border-t-2 border-border flex items-center px-4 py-2.5">
+    <div className="h-15 w-full border-t-2 border-border flex items-center px-4 py-2.5">
       <button
         onClick={() => setIsNewNoteDialogOpen(true)}
         className="flex items-center gap-2 px-3 py-2 bg-primary text-bg-light rounded hover:opacity-90 transition-opacity text-sm font-medium"
