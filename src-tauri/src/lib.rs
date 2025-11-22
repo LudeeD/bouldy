@@ -107,15 +107,23 @@ fn extract_title_from_markdown(content: &str) -> String {
 #[tauri::command]
 async fn list_vault_files(vault_path: String) -> Result<Vec<Note>, String> {
     let vault = Path::new(&vault_path);
+    let notes_dir = vault.join("notes");
 
-    if !vault.exists() {
-        return Err("Vault path does not exist".to_string());
+    // Use notes/ folder if it exists, otherwise fall back to vault root
+    let read_dir = if notes_dir.exists() {
+        &notes_dir
+    } else {
+        vault
+    };
+
+    if !read_dir.exists() {
+        return Err("Notes directory does not exist".to_string());
     }
 
     let mut notes = Vec::new();
 
-    let entries = fs::read_dir(vault)
-        .map_err(|e| format!("Failed to read vault directory: {}", e))?;
+    let entries = fs::read_dir(read_dir)
+        .map_err(|e| format!("Failed to read notes directory: {}", e))?;
 
     for entry in entries {
         let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
@@ -196,6 +204,60 @@ async fn delete_note(vault_path: String, path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn read_todos(vault_path: String) -> Result<String, String> {
+    let todo_path = Path::new(&vault_path).join("todo.txt");
+
+    if !todo_path.exists() {
+        // Return empty string if file doesn't exist yet
+        return Ok(String::new());
+    }
+
+    fs::read_to_string(&todo_path)
+        .map_err(|e| format!("Failed to read todos: {}", e))
+}
+
+#[tauri::command]
+async fn write_todos(vault_path: String, content: String) -> Result<(), String> {
+    let todo_path = Path::new(&vault_path).join("todo.txt");
+
+    fs::write(&todo_path, content)
+        .map_err(|e| format!("Failed to write todos: {}", e))
+}
+
+#[tauri::command]
+async fn migrate_vault_structure(vault_path: String) -> Result<(), String> {
+    let vault = Path::new(&vault_path);
+    let notes_dir = vault.join("notes");
+
+    // Create notes directory if it doesn't exist
+    if !notes_dir.exists() {
+        fs::create_dir(&notes_dir)
+            .map_err(|e| format!("Failed to create notes directory: {}", e))?;
+
+        // Move all .md files from vault root to notes/
+        let entries = fs::read_dir(vault)
+            .map_err(|e| format!("Failed to read vault directory: {}", e))?;
+
+        for entry in entries {
+            let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+            let path = entry.path();
+
+            // Only move .md files
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("md") {
+                let file_name = path.file_name()
+                    .ok_or_else(|| "Failed to get file name".to_string())?;
+                let dest_path = notes_dir.join(file_name);
+
+                fs::rename(&path, &dest_path)
+                    .map_err(|e| format!("Failed to move file: {}", e))?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -211,7 +273,10 @@ pub fn run() {
             list_vault_files,
             read_note,
             write_note,
-            delete_note
+            delete_note,
+            read_todos,
+            write_todos,
+            migrate_vault_structure
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

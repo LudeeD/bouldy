@@ -83,7 +83,7 @@ export function NotesProvider({ children, vaultPath }: NotesProviderProps) {
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/(^-|-$)/g, "");
         const filename = `${slug}.md`;
-        const path = `${vaultPath}/${filename}`;
+        const path = `${vaultPath}/notes/${filename}`;
 
         const initialContent = `---\ntitle: ${title}\n---\n\n`;
 

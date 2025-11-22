@@ -17,6 +17,7 @@ interface SidebarProps {
     right: PanelType | null;
   };
   onOpenPanel: (type: PanelType, side?: "left" | "right") => void;
+  disableSplitView?: boolean;
 }
 
 interface SidebarButtonProps {
@@ -26,6 +27,7 @@ interface SidebarButtonProps {
   onClick: () => void;
   onOpenLeft: (e: React.MouseEvent) => void;
   onOpenRight: (e: React.MouseEvent) => void;
+  disableSplitView?: boolean;
 }
 
 function SidebarButton({
@@ -35,11 +37,15 @@ function SidebarButton({
   onClick,
   onOpenLeft,
   onOpenRight,
+  disableSplitView = false,
 }: SidebarButtonProps) {
   const [showSplit, setShowSplit] = useState(false);
   const timeoutRef = useRef<number | null>(null);
 
   const handleMouseEnter = () => {
+    // Don't show split buttons if split view is disabled
+    if (disableSplitView) return;
+
     // Clear any existing timeout
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
@@ -133,7 +139,7 @@ function SidebarButton({
   );
 }
 
-export default function Sidebar({ activePanels, onOpenPanel }: SidebarProps) {
+export default function Sidebar({ activePanels, onOpenPanel, disableSplitView = false }: SidebarProps) {
   const getActiveSide = (type: PanelType): "left" | "right" | "both" | null => {
     if (activePanels.left === type && activePanels.right === type)
       return "both";
@@ -153,6 +159,7 @@ export default function Sidebar({ activePanels, onOpenPanel }: SidebarProps) {
           onClick={() => onOpenPanel("editor")}
           onOpenLeft={() => onOpenPanel("editor", "left")}
           onOpenRight={() => onOpenPanel("editor", "right")}
+          disableSplitView={disableSplitView}
         />
 
         <SidebarButton
@@ -162,6 +169,7 @@ export default function Sidebar({ activePanels, onOpenPanel }: SidebarProps) {
           onClick={() => onOpenPanel("todos")}
           onOpenLeft={() => onOpenPanel("todos", "left")}
           onOpenRight={() => onOpenPanel("todos", "right")}
+          disableSplitView={disableSplitView}
         />
 
         <SidebarButton
@@ -171,6 +179,7 @@ export default function Sidebar({ activePanels, onOpenPanel }: SidebarProps) {
           onClick={() => onOpenPanel("calendar")}
           onOpenLeft={() => onOpenPanel("calendar", "left")}
           onOpenRight={() => onOpenPanel("calendar", "right")}
+          disableSplitView={disableSplitView}
         />
 
         <div className="h-px bg-border w-8 mx-auto my-2" />
@@ -195,6 +204,7 @@ export default function Sidebar({ activePanels, onOpenPanel }: SidebarProps) {
           onClick={() => onOpenPanel("settings")}
           onOpenLeft={() => onOpenPanel("settings", "left")}
           onOpenRight={() => onOpenPanel("settings", "right")}
+          disableSplitView={disableSplitView}
         />
       </div>
 

@@ -1,23 +1,9 @@
 import { useState } from "react";
 import { Plus, Check, X, Scissors, Calendar } from "lucide-react";
-
-interface Subtask {
-  id: string;
-  text: string;
-  completed: boolean;
-}
-
-interface TodoItem {
-  id: string;
-  text: string;
-  completed: boolean;
-  dueDate?: string;
-  subtasks: Subtask[];
-  isExpanded: boolean;
-}
+import { useTodos } from "../contexts/TodosContext";
 
 export default function TodoSpace() {
-  const [todos, setTodos] = useState<TodoItem[]>([]);
+  const { todos, setTodos } = useTodos();
   const [newTodoText, setNewTodoText] = useState("");
   const [newTodoDate, setNewTodoDate] = useState("");
   const [activeTab, setActiveTab] = useState<"today" | "upcoming">("today");

@@ -10,6 +10,7 @@ import Sidebar from "./components/Sidebar";
 import TodoSpace from "./components/TodoSpace";
 import CalendarView from "./components/CalendarView";
 import { NotesProvider, useNotes } from "./contexts/NotesContext";
+import { TodosProvider, useTodos } from "./contexts/TodosContext";
 
 import SettingsPanel from "./components/SettingsPanel";
 
@@ -22,8 +23,19 @@ interface PanelState {
 
 function AppContent({ onResetVault }: { onResetVault: () => void }) {
   const { loadNotes, vaultPath } = useNotes();
+  const { loadTodos } = useTodos();
   const [currentTheme, setCurrentTheme] = useState<string>("midnight");
   const [store, setStore] = useState<Store | null>(null);
+  const [isNarrowScreen, setIsNarrowScreen] = useState(false);
+
+  // Initialize with editor on left, todos on right
+  const [panels, setPanels] = useState<PanelState>({
+    left: "editor",
+    right: "todos",
+  });
+
+  // Track which side was last interacted with (default to left)
+  const [mruSide, setMruSide] = useState<"left" | "right">("left");
 
   // Initialize store
   useEffect(() => {
@@ -52,18 +64,24 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
     }
   }, [currentTheme, store]);
 
-  // Initialize with editor on left, todos on right
-  const [panels, setPanels] = useState<PanelState>({
-    left: "editor",
-    right: "todos",
-  });
+  // Track screen width for responsive layout
+  // Only enable single-panel mode if BOTH panels are open AND screen is narrow
+  useEffect(() => {
+    const handleResize = () => {
+      const hasBothPanels = !!(panels.left && panels.right);
+      // 1200px = minimum space for two 600px panels
+      setIsNarrowScreen(hasBothPanels && window.innerWidth < 1200);
+    };
 
-  // Track which side was last interacted with (default to left)
-  const [mruSide, setMruSide] = useState<"left" | "right">("left");
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [panels.left, panels.right]);
 
   useEffect(() => {
     loadNotes();
-  }, [loadNotes]);
+    loadTodos();
+  }, [loadNotes, loadTodos]);
 
   const activatePanel = (type: PanelType, side?: "left" | "right") => {
     setPanels((prev) => {
@@ -235,10 +253,22 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
     );
   };
 
+  // Calculate visible panels based on narrow screen mode
+  const visiblePanels = isNarrowScreen
+    ? {
+        left: mruSide === "left" ? panels.left : null,
+        right: mruSide === "right" ? panels.right : null,
+      }
+    : panels;
+
   return (
     <div className="h-screen flex bg-bg">
       {/* Left icon sidebar */}
-      <Sidebar activePanels={panels} onOpenPanel={activatePanel} />
+      <Sidebar
+        activePanels={visiblePanels}
+        onOpenPanel={activatePanel}
+        disableSplitView={isNarrowScreen}
+      />
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col">
@@ -255,11 +285,34 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
         <div className="flex-1 flex overflow-hidden bg-dots">
           {!panels.left && !panels.right && <Home />}
 
-          {panels.left && renderSlot("left")}
+          {/* On narrow screens, show only the MRU panel */}
+          {isNarrowScreen ? (
+            <>
+              {mruSide === "left" && panels.left && renderSlot("left")}
+              {mruSide === "right" && panels.right && renderSlot("right")}
+            </>
+          ) : (
+            <>
+              {/* Left panel with min-width */}
+              {panels.left && (
+                <div className="flex-1 min-w-[600px] flex flex-col overflow-hidden">
+                  {renderSlot("left")}
+                </div>
+              )}
 
-          {/* Divider if both are present */}
+              {/* Divider if both are present */}
+              {panels.left && panels.right && (
+                <div className="w-px bg-border" />
+              )}
 
-          {panels.right && renderSlot("right")}
+              {/* Right panel with min-width */}
+              {panels.right && (
+                <div className="flex-1 min-w-[600px] flex flex-col overflow-hidden">
+                  {renderSlot("right")}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -280,6 +333,8 @@ function App() {
           // Verify the vault folder still exists
           const exists = await invoke<boolean>("check_vault_exists", { path });
           if (exists) {
+            // Run vault migration to create notes/ folder and move files
+            await invoke("migrate_vault_structure", { vaultPath: path });
             setVaultPath(path);
           }
         }
@@ -311,7 +366,9 @@ function App() {
 
   return (
     <NotesProvider vaultPath={vaultPath}>
-      <AppContent onResetVault={() => setVaultPath(null)} />
+      <TodosProvider vaultPath={vaultPath}>
+        <AppContent onResetVault={() => setVaultPath(null)} />
+      </TodosProvider>
     </NotesProvider>
   );
 }
