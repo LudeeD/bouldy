@@ -126,14 +126,6 @@ export default function TodoSpace() {
     );
   };
 
-  const toggleExpand = (todoId: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === todoId ? { ...todo, isExpanded: !todo.isExpanded } : todo,
-      ),
-    );
-  };
-
   const toggleTodo = (id: string) => {
     setTodos(
       todos.map((todo) =>
