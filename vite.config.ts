@@ -29,4 +29,30 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate React and React DOM into their own chunk
+          react: ['react', 'react-dom'],
+          // Separate all ProseMirror packages into one chunk
+          prosemirror: [
+            'prosemirror-state',
+            'prosemirror-view',
+            'prosemirror-model',
+            'prosemirror-transform',
+            'prosemirror-commands',
+            'prosemirror-keymap',
+            'prosemirror-history',
+            'prosemirror-inputrules',
+            'prosemirror-markdown',
+            'prosemirror-schema-basic',
+            'prosemirror-schema-list',
+          ],
+          // Separate markdown-it and lucide-react
+          vendor: ['markdown-it', 'lucide-react'],
+        },
+      },
+    },
+  },
 }));
