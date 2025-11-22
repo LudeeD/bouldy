@@ -199,7 +199,7 @@ export default function Sidebar({ activePanels, onOpenPanel }: SidebarProps) {
       </div>
 
       <div className="writing-mode-vertical text-text-muted font-medium text-sm tracking-wider">
-        <span className="rotate-180 inline-block">Something</span>
+        <span className="rotate-180 inline-block">Bouldy</span>
       </div>
     </div>
   );

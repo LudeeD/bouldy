@@ -302,6 +302,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "bouldy"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-opener",
+ "tauri-plugin-store",
+]
+
+[[package]]
 name = "brotli"
 version = "8.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3453,20 +3467,6 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
  "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "something"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-opener",
- "tauri-plugin-store",
 ]
 
 [[package]]

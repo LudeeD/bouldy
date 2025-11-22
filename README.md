@@ -1,83 +1,10 @@
-# Personal Note-Taking App
+# Bouldy
 
-A lightweight, desktop note-taking application built with Tauri, React, and ProseMirror.
+A lightweight desktop note-taking app built with Tauri and React. Notes are stored as markdown files with YAML frontmatter, giving you full control over your data. Features a clean ProseMirror editor with auto-save, multiple panel views for todos and calendar, and customizable themes.
 
-## Tech Stack
-
-- **Frontend**: React 19 + TypeScript
-- **Desktop Framework**: Tauri 2 (Rust-based, lightweight alternative to Electron)
-- **Editor**: ProseMirror (rich text editing with extensible schema)
-- **Styling**: Tailwind CSS v4
-- **Build Tool**: Vite 7
-
-## Features
-
-- Rich text editing with ProseMirror
-- Undo/redo support (Ctrl/Cmd+Z, Ctrl/Cmd+Y)
-- Dark mode support
-- Native desktop application
-- Fast and lightweight (Tauri uses native OS webview)
-
-## Development
-
-### Prerequisites
-
-- Node.js (v18 or higher)
-- Rust (for Tauri)
-- npm or yarn
-
-### Setup
+## Running
 
 ```bash
-# Install dependencies
 npm install
-
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
+npm run tauri dev
 ```
-
-### Development Server
-
-The app runs on `http://localhost:1420` during development.
-
-## Project Structure
-
-```
-.
-├── src/                    # React/TypeScript source
-│   ├── components/         # React components
-│   │   └── Editor.tsx     # ProseMirror editor component
-│   ├── App.tsx            # Main app component
-│   ├── App.css            # Global styles + Tailwind
-│   └── main.tsx           # React entry point
-├── src-tauri/             # Tauri Rust backend
-│   ├── src/               # Rust source code
-│   └── tauri.conf.json    # Tauri configuration
-├── public/                # Static assets
-└── index.html             # HTML entry point
-```
-
-## Roadmap
-
-- [ ] Note persistence (save/load notes)
-- [ ] Multiple notes management
-- [ ] Search functionality
-- [ ] Export notes (markdown, PDF)
-- [ ] Rich formatting toolbar
-- [ ] Custom themes
-- [ ] Tags and organization
-
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/)
-- Extensions:
-  - [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)
-  - [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
-  - [Tailwind CSS IntelliSense](https://marketplace.visualstudio.com/items?itemName=bradlc.vscode-tailwindcss)
-
-## License
-
-MIT
