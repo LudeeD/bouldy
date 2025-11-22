@@ -78,12 +78,11 @@ export function NotesProvider({ children, vaultPath }: NotesProviderProps) {
   const createNote = useCallback(
     async (title: string) => {
       try {
-        const timestamp = Date.now();
         const slug = title
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/(^-|-$)/g, "");
-        const filename = `${slug}-${timestamp}.md`;
+        const filename = `${slug}.md`;
         const path = `${vaultPath}/${filename}`;
 
         const initialContent = `---\ntitle: ${title}\n---\n\n`;
