@@ -14,9 +14,9 @@ jobs:
       matrix:
         include:
           - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
+            args: '--target aarch64-apple-darwin --bundles app'
           - platform: 'ubuntu-22.04'
-            args: ''
+            args: '--bundles deb'
 
     runs-on: ${{ matrix.platform }}
     steps:
