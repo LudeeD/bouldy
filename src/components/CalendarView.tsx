@@ -6,17 +6,17 @@ export default function CalendarView() {
     <div className="h-full flex flex-col p-4">
       {/* Header */}
       <div className="mb-4">
-        <h2 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-3">
+        <h2 className="text-sm font-medium text-text mb-3">
           Calendar
         </h2>
-        <div className="text-lg font-semibold text-blue-900 dark:text-blue-300">
+        <div className="text-lg font-semibold text-text">
           {currentMonth}
         </div>
       </div>
 
       {/* Calendar placeholder */}
       <div className="flex-1 flex items-center justify-center">
-        <div className="text-center text-blue-700 dark:text-blue-600">
+        <div className="text-center text-text-muted">
           <p className="text-sm">Calendar view coming soon</p>
         </div>
       </div>

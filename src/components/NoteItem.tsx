@@ -32,24 +32,24 @@ export default function NoteItem({ note, isActive, onClick, onDelete }: NoteItem
   return (
     <div
       onClick={onClick}
-      className={`w-full text-left px-3 py-2 rounded-lg transition-all cursor-pointer ${
+      className={`w-full text-left px-3 py-2 rounded transition-all cursor-pointer ${
         isActive
-          ? 'bg-white dark:bg-slate-800 shadow-sm'
-          : 'bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm'
+          ? 'bg-bg-light border-2 border-border'
+          : 'bg-bg-light/50 border-2 border-transparent hover:bg-bg-light hover:border-border-muted'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-blue-900 dark:text-blue-300 truncate">
+          <h3 className="text-sm font-medium text-text truncate">
             {note.title}
           </h3>
-          <p className="text-xs text-blue-600 dark:text-blue-700 mt-0.5">
+          <p className="text-xs text-text-muted mt-0.5">
             {formatDate(note.modified)}
           </p>
         </div>
         <button
           onClick={handleDelete}
-          className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-950 text-blue-600 dark:text-blue-700 hover:text-red-600 dark:hover:text-red-400 transition-colors flex-shrink-0"
+          className="p-1 rounded text-text-muted hover:text-danger hover:bg-bg transition-colors flex-shrink-0"
           aria-label="Delete note"
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
