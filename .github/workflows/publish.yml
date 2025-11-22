@@ -2,8 +2,6 @@ name: 'publish'
 
 on:
   push:
-    tags:
-      - 'v*'
     branches:
       - main
 
@@ -43,7 +41,7 @@ jobs:
       - name: install frontend dependencies
         run: npm install
 
-      - uses: tauri-apps/tauri-action@v1
+      - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
