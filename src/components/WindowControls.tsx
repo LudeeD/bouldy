@@ -1,4 +1,4 @@
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export default function WindowControls() {
   const handleMinimize = async () => {
@@ -34,7 +34,14 @@ export default function WindowControls() {
         aria-label="Maximize"
       >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <rect x="0.5" y="0.5" width="9" height="9" stroke="currentColor" strokeWidth="1.5" />
+          <rect
+            x="0.5"
+            y="0.5"
+            width="9"
+            height="9"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          />
         </svg>
       </button>
 

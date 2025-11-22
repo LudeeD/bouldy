@@ -5,195 +5,194 @@
 @plugin "@tailwindcss/typography";
 
 @theme {
-    --color-bg-dark: var(--bg-dark);
-    --color-bg: var(--bg);
-    --color-bg-light: var(--bg-light);
+  --color-bg-dark: var(--bg-dark);
+  --color-bg: var(--bg);
+  --color-bg-light: var(--bg-light);
 
-    --color-text: var(--text);
-    --color-text-muted: var(--text-muted);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
 
-    --color-highlight: var(--highlight);
+  --color-highlight: var(--highlight);
 
-    --color-border: var(--border);
-    --color-border-muted: var(--border-muted);
+  --color-border: var(--border);
+  --color-border-muted: var(--border-muted);
 
-    --color-primary: var(--primary);
-    --color-secondary: var(--secondary);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
 
-    --color-danger: var(--danger);
-    --color-warning: var(--warning);
-    --color-success: var(--success);
-    --color-info: var(--info);
-
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-info: var(--info);
 }
 
 /* Typography */
 :root,
 [data-theme="midnight"] {
-    --bg-dark: oklch(0.1 0.025 264);
-    --bg: oklch(0.15 0.025 264);
-    --bg-light: oklch(0.2 0.025 264);
-    --text: oklch(0.96 0.05 264);
-    --text-muted: oklch(0.76 0.05 264);
-    --highlight: oklch(0.5 0.05 264);
-    --border: oklch(0.4 0.05 264);
-    --border-muted: oklch(0.3 0.05 264);
-    --primary: oklch(0.76 0.1 264);
-    --secondary: oklch(0.76 0.1 84);
-    --danger: oklch(0.7 0.05 30);
-    --warning: oklch(0.7 0.05 100);
-    --success: oklch(0.7 0.05 160);
-    --info: oklch(0.7 0.05 260);
+  --bg-dark: oklch(0.1 0.025 264);
+  --bg: oklch(0.15 0.025 264);
+  --bg-light: oklch(0.2 0.025 264);
+  --text: oklch(0.96 0.05 264);
+  --text-muted: oklch(0.76 0.05 264);
+  --highlight: oklch(0.5 0.05 264);
+  --border: oklch(0.4 0.05 264);
+  --border-muted: oklch(0.3 0.05 264);
+  --primary: oklch(0.76 0.1 264);
+  --secondary: oklch(0.76 0.1 84);
+  --danger: oklch(0.7 0.05 30);
+  --warning: oklch(0.7 0.05 100);
+  --success: oklch(0.7 0.05 160);
+  --info: oklch(0.7 0.05 260);
 }
 
 [data-theme="dawn"] {
-    --bg-dark: oklch(0.92 0.03 252);
-    --bg: oklch(0.95 0.02 252);
-    --bg-light: oklch(0.98 0.01 252);
-    --text: oklch(0.2 0.04 252);
-    --text-muted: oklch(0.4 0.04 252);
-    --highlight: oklch(0.85 0.05 252);
-    --border: oklch(0.8 0.04 252);
-    --border-muted: oklch(0.9 0.02 252);
-    --primary: oklch(0.5 0.15 252);
-    --secondary: oklch(0.6 0.15 72);
-    --danger: oklch(0.6 0.15 30);
-    --warning: oklch(0.75 0.15 80);
-    --success: oklch(0.6 0.15 150);
-    --info: oklch(0.6 0.15 240);
+  --bg-dark: oklch(0.92 0.03 252);
+  --bg: oklch(0.95 0.02 252);
+  --bg-light: oklch(0.98 0.01 252);
+  --text: oklch(0.2 0.04 252);
+  --text-muted: oklch(0.4 0.04 252);
+  --highlight: oklch(0.85 0.05 252);
+  --border: oklch(0.8 0.04 252);
+  --border-muted: oklch(0.9 0.02 252);
+  --primary: oklch(0.5 0.15 252);
+  --secondary: oklch(0.6 0.15 72);
+  --danger: oklch(0.6 0.15 30);
+  --warning: oklch(0.75 0.15 80);
+  --success: oklch(0.6 0.15 150);
+  --info: oklch(0.6 0.15 240);
 }
 
 [data-theme="forest"] {
-    --bg-dark: oklch(0.1 0.03 150);
-    --bg: oklch(0.14 0.04 150);
-    --bg-light: oklch(0.18 0.05 150);
-    --text: oklch(0.94 0.04 150);
-    --text-muted: oklch(0.75 0.06 150);
-    --highlight: oklch(0.35 0.08 150);
-    --border: oklch(0.3 0.06 150);
-    --border-muted: oklch(0.25 0.04 150);
-    --primary: oklch(0.7 0.12 150);
-    --secondary: oklch(0.75 0.12 80);
-    --danger: oklch(0.65 0.15 25);
-    --warning: oklch(0.8 0.12 90);
-    --success: oklch(0.7 0.12 140);
-    --info: oklch(0.7 0.1 220);
+  --bg-dark: oklch(0.1 0.03 150);
+  --bg: oklch(0.14 0.04 150);
+  --bg-light: oklch(0.18 0.05 150);
+  --text: oklch(0.94 0.04 150);
+  --text-muted: oklch(0.75 0.06 150);
+  --highlight: oklch(0.35 0.08 150);
+  --border: oklch(0.3 0.06 150);
+  --border-muted: oklch(0.25 0.04 150);
+  --primary: oklch(0.7 0.12 150);
+  --secondary: oklch(0.75 0.12 80);
+  --danger: oklch(0.65 0.15 25);
+  --warning: oklch(0.8 0.12 90);
+  --success: oklch(0.7 0.12 140);
+  --info: oklch(0.7 0.1 220);
 }
 
 [data-theme="sunset"] {
-    --bg-dark: oklch(0.12 0.04 300);
-    --bg: oklch(0.16 0.05 320);
-    --bg-light: oklch(0.22 0.06 330);
-    --text: oklch(0.95 0.04 320);
-    --text-muted: oklch(0.75 0.06 320);
-    --highlight: oklch(0.4 0.1 320);
-    --border: oklch(0.35 0.08 320);
-    --border-muted: oklch(0.25 0.06 320);
-    --primary: oklch(0.7 0.18 340);
-    --secondary: oklch(0.75 0.15 40);
-    --danger: oklch(0.65 0.18 20);
-    --warning: oklch(0.8 0.15 70);
-    --success: oklch(0.7 0.15 140);
-    --info: oklch(0.7 0.12 260);
+  --bg-dark: oklch(0.12 0.04 300);
+  --bg: oklch(0.16 0.05 320);
+  --bg-light: oklch(0.22 0.06 330);
+  --text: oklch(0.95 0.04 320);
+  --text-muted: oklch(0.75 0.06 320);
+  --highlight: oklch(0.4 0.1 320);
+  --border: oklch(0.35 0.08 320);
+  --border-muted: oklch(0.25 0.06 320);
+  --primary: oklch(0.7 0.18 340);
+  --secondary: oklch(0.75 0.15 40);
+  --danger: oklch(0.65 0.18 20);
+  --warning: oklch(0.8 0.15 70);
+  --success: oklch(0.7 0.15 140);
+  --info: oklch(0.7 0.12 260);
 }
 
 /* Custom prose theme using our design system */
 @utility prose {
-    --tw-prose-body: var(--text);
-    --tw-prose-headings: var(--text);
-    --tw-prose-lead: var(--text);
-    --tw-prose-links: var(--primary);
-    --tw-prose-bold: var(--text);
-    --tw-prose-counters: var(--text-muted);
-    --tw-prose-bullets: var(--text-muted);
-    --tw-prose-hr: var(--border);
-    --tw-prose-quotes: var(--text-muted);
-    --tw-prose-quote-borders: var(--primary);
-    --tw-prose-captions: var(--text-muted);
-    --tw-prose-code: var(--primary);
-    --tw-prose-pre-code: var(--text);
-    --tw-prose-pre-bg: var(--bg-light);
-    --tw-prose-th-borders: var(--border);
-    --tw-prose-td-borders: var(--border-muted);
+  --tw-prose-body: var(--text);
+  --tw-prose-headings: var(--text);
+  --tw-prose-lead: var(--text);
+  --tw-prose-links: var(--primary);
+  --tw-prose-bold: var(--text);
+  --tw-prose-counters: var(--text-muted);
+  --tw-prose-bullets: var(--text-muted);
+  --tw-prose-hr: var(--border);
+  --tw-prose-quotes: var(--text-muted);
+  --tw-prose-quote-borders: var(--primary);
+  --tw-prose-captions: var(--text-muted);
+  --tw-prose-code: var(--primary);
+  --tw-prose-pre-code: var(--text);
+  --tw-prose-pre-bg: var(--bg-light);
+  --tw-prose-th-borders: var(--border);
+  --tw-prose-td-borders: var(--border-muted);
 }
 
 * {
-    font-family:
-        "Inter",
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Helvetica,
-        Arial,
-        sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Helvetica,
+    Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Fix SVG alignment issues - SVGs default to baseline which causes misalignment with text */
 svg {
-    display: block;
+  display: block;
 }
 
 /* When SVG is in a flex container, it should align properly */
 button svg,
 a svg {
-    display: inline-block;
-    vertical-align: middle;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 /* Global dotted background pattern - like a dotted journal */
 body {
-    background: var(--bg);
-    color: var(--text);
+  background: var(--bg);
+  color: var(--text);
 }
 
 .bg-dots {
-    background-color: var(--bg);
-    background-image: radial-gradient(
-        circle,
-        var(--border-muted) 1.5px,
-        transparent 1.5px
-    );
-    background-size: 16px 16px;
+  background-color: var(--bg);
+  background-image: radial-gradient(
+    circle,
+    var(--border-muted) 1.5px,
+    transparent 1.5px
+  );
+  background-size: 16px 16px;
 }
 
 /* Vertical text for sidebar */
 .writing-mode-vertical {
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
 }
 
 /* ProseMirror editor styles */
 .ProseMirror {
-    outline: none;
-    caret-color: var(--primary);
+  outline: none;
+  caret-color: var(--primary);
 }
 
 /* Empty paragraph placeholder */
 .ProseMirror p.is-empty:first-child::before {
-    content: "Start writing...";
-    color: var(--text-muted);
-    pointer-events: none;
-    position: absolute;
-    font-style: italic;
+  content: "Start writing...";
+  color: var(--text-muted);
+  pointer-events: none;
+  position: absolute;
+  font-style: italic;
 }
 
 /* Selection colors */
 .ProseMirror ::selection {
-    background: var(--highlight);
-    color: var(--text);
+  background: var(--highlight);
+  color: var(--text);
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
 .no-scrollbar::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 /* Hide scrollbar for IE, Edge and Firefox */
 .no-scrollbar {
-    -ms-overflow-style: none;
-    /* IE and Edge */
-    scrollbar-width: none;
-    /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }

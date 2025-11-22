@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 interface NewNoteDialogProps {
   isOpen: boolean;
@@ -6,8 +6,12 @@ interface NewNoteDialogProps {
   onCreate: (title: string) => void;
 }
 
-export default function NewNoteDialog({ isOpen, onClose, onCreate }: NewNoteDialogProps) {
-  const [title, setTitle] = useState('');
+export default function NewNoteDialog({
+  isOpen,
+  onClose,
+  onCreate,
+}: NewNoteDialogProps) {
+  const [title, setTitle] = useState("");
 
   if (!isOpen) return null;
 
@@ -15,28 +19,24 @@ export default function NewNoteDialog({ isOpen, onClose, onCreate }: NewNoteDial
     e.preventDefault();
     if (title.trim()) {
       onCreate(title.trim());
-      setTitle('');
+      setTitle("");
       onClose();
     }
   };
 
   const handleCancel = () => {
-    setTitle('');
+    setTitle("");
     onClose();
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-bg-light border-2 border-border p-6 w-full max-w-md">
-        <h2 className="text-xl font-medium text-text mb-4">
-          New Note
-        </h2>
+        <h2 className="text-xl font-medium text-text mb-4">New Note</h2>
 
         <form onSubmit={handleSubmit}>
           <label className="block mb-4">
-            <span className="text-sm text-text-muted mb-2 block">
-              Title
-            </span>
+            <span className="text-sm text-text-muted mb-2 block">Title</span>
             <input
               type="text"
               value={title}

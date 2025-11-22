@@ -1,5 +1,8 @@
-import { MarkdownSerializer, defaultMarkdownSerializer } from 'prosemirror-markdown';
-import { EditorState } from 'prosemirror-state';
+import {
+  MarkdownSerializer,
+  defaultMarkdownSerializer,
+} from "prosemirror-markdown";
+import { EditorState } from "prosemirror-state";
 
 // Use the default markdown serializer from prosemirror-markdown
 export const markdownSerializer = new MarkdownSerializer(
@@ -14,7 +17,7 @@ export const markdownSerializer = new MarkdownSerializer(
   {
     ...defaultMarkdownSerializer.marks,
     // Customize marks if needed
-  }
+  },
 );
 
 export function serializeToMarkdown(state: EditorState): string {
@@ -38,6 +41,8 @@ export function extractTitle(markdown: string): string {
   }
 
   // Fall back to first line (max 50 chars)
-  const firstLine = markdown.split('\n')[0].trim();
-  return firstLine.length > 50 ? firstLine.substring(0, 47) + '...' : firstLine || 'Untitled';
+  const firstLine = markdown.split("\n")[0].trim();
+  return firstLine.length > 50
+    ? firstLine.substring(0, 47) + "..."
+    : firstLine || "Untitled";
 }

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Check, X } from 'lucide-react';
+import { useState } from "react";
+import { Plus, Check, X } from "lucide-react";
 
 interface TodoItem {
   id: string;
@@ -9,7 +9,7 @@ interface TodoItem {
 
 export default function TodoSpace() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
-  const [newTodoText, setNewTodoText] = useState('');
+  const [newTodoText, setNewTodoText] = useState("");
 
   const addTodo = () => {
     if (newTodoText.trim()) {
@@ -21,22 +21,24 @@ export default function TodoSpace() {
           completed: false,
         },
       ]);
-      setNewTodoText('');
+      setNewTodoText("");
     }
   };
 
   const toggleTodo = (id: string) => {
-    setTodos(todos.map(todo =>
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ));
+    setTodos(
+      todos.map((todo) =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo,
+      ),
+    );
   };
 
   const deleteTodo = (id: string) => {
-    setTodos(todos.filter(todo => todo.id !== id));
+    setTodos(todos.filter((todo) => todo.id !== id));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       addTodo();
     }
   };
@@ -45,9 +47,7 @@ export default function TodoSpace() {
     <div className="h-full flex flex-col p-4">
       {/* Header */}
       <div className="mb-4">
-        <h2 className="text-sm font-medium text-text mb-3">
-          To-Do
-        </h2>
+        <h2 className="text-sm font-medium text-text mb-3">To-Do</h2>
 
         {/* Add todo input */}
         <div className="flex gap-2">
@@ -85,8 +85,8 @@ export default function TodoSpace() {
                 onClick={() => toggleTodo(todo.id)}
                 className={`flex-shrink-0 w-5 h-5 mt-0.5 border-2 transition-colors ${
                   todo.completed
-                    ? 'bg-primary border-primary'
-                    : 'border-border hover:border-primary'
+                    ? "bg-primary border-primary"
+                    : "border-border hover:border-primary"
                 }`}
                 aria-label="Toggle todo"
               >
@@ -97,9 +97,7 @@ export default function TodoSpace() {
 
               <span
                 className={`flex-1 text-sm transition-all ${
-                  todo.completed
-                    ? 'text-text-muted line-through'
-                    : 'text-text'
+                  todo.completed ? "text-text-muted line-through" : "text-text"
                 }`}
               >
                 {todo.text}

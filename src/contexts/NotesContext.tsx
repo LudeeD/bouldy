@@ -1,6 +1,12 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import type { Note, NoteMetadata } from '../types';
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  ReactNode,
+} from "react";
+import { invoke } from "@tauri-apps/api/core";
+import type { Note, NoteMetadata } from "../types";
 
 interface NotesContextType {
   notes: Note[];
@@ -24,7 +30,7 @@ const NotesContext = createContext<NotesContextType | undefined>(undefined);
 export function useNotes() {
   const context = useContext(NotesContext);
   if (!context) {
-    throw new Error('useNotes must be used within NotesProvider');
+    throw new Error("useNotes must be used within NotesProvider");
   }
   return context;
 }
@@ -43,83 +49,100 @@ export function NotesProvider({ children, vaultPath }: NotesProviderProps) {
 
   const loadNotes = useCallback(async () => {
     try {
-      const notesList = await invoke<Note[]>('list_vault_files', { vaultPath });
+      const notesList = await invoke<Note[]>("list_vault_files", { vaultPath });
       setNotes(notesList);
     } catch (err) {
       setError(err as string);
     }
   }, [vaultPath]);
 
-  const openNote = useCallback(async (path: string): Promise<string> => {
-    try {
-      const metadata = await invoke<NoteMetadata>('read_note', { path });
-      const note = notes.find(n => n.path === path);
-      if (note) {
+  const openNote = useCallback(
+    async (path: string): Promise<string> => {
+      try {
+        const metadata = await invoke<NoteMetadata>("read_note", { path });
+        const note = notes.find((n) => n.path === path);
+        if (note) {
+          setCurrentNote(note);
+        }
+        setIsDirty(false);
+        return metadata.content;
+      } catch (err) {
+        setError(err as string);
+        throw err;
+      }
+    },
+    [notes],
+  );
+
+  const createNote = useCallback(
+    async (title: string) => {
+      try {
+        const timestamp = Date.now();
+        const slug = title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+        const filename = `${slug}-${timestamp}.md`;
+        const path = `${vaultPath}/${filename}`;
+
+        const initialContent = `# ${title}\n\n`;
+
+        const note = await invoke<Note>("write_note", {
+          path,
+          content: initialContent,
+          title,
+        });
+
+        setNotes((prev) => [note, ...prev]);
         setCurrentNote(note);
+        setIsDirty(false);
+      } catch (err) {
+        setError(err as string);
       }
-      setIsDirty(false);
-      return metadata.content;
-    } catch (err) {
-      setError(err as string);
-      throw err;
-    }
-  }, [notes]);
+    },
+    [vaultPath],
+  );
 
-  const createNote = useCallback(async (title: string) => {
-    try {
-      const timestamp = Date.now();
-      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      const filename = `${slug}-${timestamp}.md`;
-      const path = `${vaultPath}/${filename}`;
-
-      const initialContent = `# ${title}\n\n`;
-
-      const note = await invoke<Note>('write_note', {
-        path,
-        content: initialContent,
-        title,
-      });
-
-      setNotes(prev => [note, ...prev]);
-      setCurrentNote(note);
-      setIsDirty(false);
-    } catch (err) {
-      setError(err as string);
-    }
-  }, [vaultPath]);
-
-  const deleteNote = useCallback(async (path: string) => {
-    try {
-      await invoke('delete_note', { vaultPath, path });
-      setNotes(prev => prev.filter(n => n.path !== path));
-      if (currentNote?.path === path) {
-        setCurrentNote(null);
+  const deleteNote = useCallback(
+    async (path: string) => {
+      try {
+        await invoke("delete_note", { vaultPath, path });
+        setNotes((prev) => prev.filter((n) => n.path !== path));
+        if (currentNote?.path === path) {
+          setCurrentNote(null);
+        }
+      } catch (err) {
+        setError(err as string);
       }
-    } catch (err) {
-      setError(err as string);
-    }
-  }, [vaultPath, currentNote]);
+    },
+    [vaultPath, currentNote],
+  );
 
-  const saveCurrentNote = useCallback(async (content: string, title: string) => {
-    if (!currentNote) return;
+  const saveCurrentNote = useCallback(
+    async (content: string, title: string) => {
+      if (!currentNote) return;
 
-    try {
-      setIsSaving(true);
-      const updatedNote = await invoke<Note>('write_note', {
-        path: currentNote.path,
-        content,
-        title,
-      });
+      try {
+        setIsSaving(true);
+        const updatedNote = await invoke<Note>("write_note", {
+          path: currentNote.path,
+          content,
+          title,
+        });
 
-      setNotes(prev => prev.map(n => n.path === updatedNote.path ? updatedNote : n));
-      setCurrentNote(updatedNote);
-      setIsDirty(false);
-    } catch (err) {
-      setError(err as string);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [currentNote]);
+        setNotes((prev) =>
+          prev.map((n) => (n.path === updatedNote.path ? updatedNote : n)),
+        );
+        setCurrentNote(updatedNote);
+        setIsDirty(false);
+      } catch (err) {
+        setError(err as string);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [currentNote],
+  );
 
   const clearError = useCallback(() => {
     setError(null);

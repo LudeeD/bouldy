@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { EditorState } from 'prosemirror-state';
-import { serializeToMarkdown, extractTitle } from '../utils/markdownSerializer';
+import { useEffect, useRef } from "react";
+import { EditorState } from "prosemirror-state";
+import { serializeToMarkdown, extractTitle } from "../utils/markdownSerializer";
 
 interface UseAutoSaveProps {
   editorState: EditorState | null;
@@ -41,7 +41,7 @@ export function useAutoSave({
         await onSave(content, title);
         lastSavedStateRef.current = editorState;
       } catch (error) {
-        console.error('Auto-save failed:', error);
+        console.error("Auto-save failed:", error);
       }
     }, delay);
 
@@ -67,7 +67,7 @@ export function useAutoSave({
       await onSave(content, title);
       lastSavedStateRef.current = editorState;
     } catch (error) {
-      console.error('Manual save failed:', error);
+      console.error("Manual save failed:", error);
     }
   };
 

@@ -1,4 +1,4 @@
-import { Note } from '../types';
+import { Note } from "../types";
 
 interface NoteItemProps {
   note: Note;
@@ -7,7 +7,12 @@ interface NoteItemProps {
   onDelete: () => void;
 }
 
-export default function NoteItem({ note, isActive, onClick, onDelete }: NoteItemProps) {
+export default function NoteItem({
+  note,
+  isActive,
+  onClick,
+  onDelete,
+}: NoteItemProps) {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDelete();
@@ -21,7 +26,7 @@ export default function NoteItem({ note, isActive, onClick, onDelete }: NoteItem
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
+    if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
@@ -34,8 +39,8 @@ export default function NoteItem({ note, isActive, onClick, onDelete }: NoteItem
       onClick={onClick}
       className={`w-full text-left px-3 py-2 rounded transition-all cursor-pointer ${
         isActive
-          ? 'bg-bg-light border-2 border-border'
-          : 'bg-bg-light/50 border-2 border-transparent hover:bg-bg-light hover:border-border-muted'
+          ? "bg-bg-light border-2 border-border"
+          : "bg-bg-light/50 border-2 border-transparent hover:bg-bg-light hover:border-border-muted"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
