@@ -139,7 +139,11 @@ function SidebarButton({
   );
 }
 
-export default function Sidebar({ activePanels, onOpenPanel, disableSplitView = false }: SidebarProps) {
+export default function Sidebar({
+  activePanels,
+  onOpenPanel,
+  disableSplitView = false,
+}: SidebarProps) {
   const getActiveSide = (type: PanelType): "left" | "right" | "both" | null => {
     if (activePanels.left === type && activePanels.right === type)
       return "both";
@@ -181,15 +185,6 @@ export default function Sidebar({ activePanels, onOpenPanel, disableSplitView = 
           onOpenRight={() => onOpenPanel("calendar", "right")}
           disableSplitView={disableSplitView}
         />
-
-        <div className="h-px bg-border w-8 mx-auto my-2" />
-
-        <button
-          className="p-3 rounded hover:bg-highlight text-text-muted hover:text-primary transition-colors"
-          aria-label="Vault"
-        >
-          <FolderOpen size={20} />
-        </button>
       </div>
 
       {/* Spacer */}

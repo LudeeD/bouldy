@@ -300,11 +300,6 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
                 </div>
               )}
 
-              {/* Divider if both are present */}
-              {panels.left && panels.right && (
-                <div className="w-px bg-border" />
-              )}
-
               {/* Right panel with min-width */}
               {panels.right && (
                 <div className="flex-1 min-w-[600px] flex flex-col overflow-hidden">
