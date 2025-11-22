@@ -1,6 +1,7 @@
 import "./App.css";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { Store } from "@tauri-apps/plugin-store";
 import Editor from "./components/Editor";
 import VaultSelector from "./components/VaultSelector";
 import WindowControls from "./components/WindowControls";
@@ -22,12 +23,34 @@ interface PanelState {
 function AppContent({ onResetVault }: { onResetVault: () => void }) {
   const { loadNotes, vaultPath } = useNotes();
   const [currentTheme, setCurrentTheme] = useState<string>("midnight");
+  const [store, setStore] = useState<Store | null>(null);
 
-  // Apply theme
+  // Initialize store
+  useEffect(() => {
+    const initStore = async () => {
+      const newStore = await Store.load("settings.json");
+      setStore(newStore);
+
+      // Load saved theme
+      const savedTheme = await newStore.get<string>("theme");
+      if (savedTheme) {
+        setCurrentTheme(savedTheme);
+      }
+    };
+    initStore();
+  }, []);
+
+  // Apply theme and save to store
   useEffect(() => {
     const root = window.document.documentElement;
     root.setAttribute("data-theme", currentTheme);
-  }, [currentTheme]);
+
+    // Save theme to store
+    if (store) {
+      store.set("theme", currentTheme);
+      store.save();
+    }
+  }, [currentTheme, store]);
 
   // Initialize with editor on left, todos on right
   const [panels, setPanels] = useState<PanelState>({
