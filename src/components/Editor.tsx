@@ -57,8 +57,14 @@ export default function Editor() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState("");
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const { currentNote, openNote, saveCurrentNote, setIsDirty, isSaving, updateNoteTitle } =
-    useNotes();
+  const {
+    currentNote,
+    openNote,
+    saveCurrentNote,
+    setIsDirty,
+    isSaving,
+    updateNoteTitle,
+  } = useNotes();
 
   const { saveNow } = useAutoSave({
     editorState,

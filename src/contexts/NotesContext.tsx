@@ -145,16 +145,19 @@ export function NotesProvider({ children, vaultPath }: NotesProviderProps) {
     [currentNote],
   );
 
-  const updateNoteTitle = useCallback((newTitle: string) => {
-    if (!currentNote) return;
+  const updateNoteTitle = useCallback(
+    (newTitle: string) => {
+      if (!currentNote) return;
 
-    const updatedNote = { ...currentNote, title: newTitle };
-    setCurrentNote(updatedNote);
-    setNotes((prev) =>
-      prev.map((n) => (n.path === updatedNote.path ? updatedNote : n)),
-    );
-    setIsDirty(true);
-  }, [currentNote]);
+      const updatedNote = { ...currentNote, title: newTitle };
+      setCurrentNote(updatedNote);
+      setNotes((prev) =>
+        prev.map((n) => (n.path === updatedNote.path ? updatedNote : n)),
+      );
+      setIsDirty(true);
+    },
+    [currentNote],
+  );
 
   const clearError = useCallback(() => {
     setError(null);

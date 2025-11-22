@@ -46,10 +46,7 @@ export const markdownParser = new MarkdownParser(mySchema, new MarkdownIt(), {
   code_inline: { mark: "code", noCloseToken: true },
 });
 
-export function parseMarkdown(
-  markdown: string,
-  plugins: Plugin[] = [],
-) {
+export function parseMarkdown(markdown: string, plugins: Plugin[] = []) {
   const doc = markdownParser.parse(markdown);
   if (!doc) {
     throw new Error("Failed to parse markdown");

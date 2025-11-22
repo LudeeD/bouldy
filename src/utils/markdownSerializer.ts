@@ -20,17 +20,23 @@ export const markdownSerializer = new MarkdownSerializer(
   },
 );
 
-export function serializeToMarkdown(state: EditorState, title?: string): string {
+export function serializeToMarkdown(
+  state: EditorState,
+  title?: string,
+): string {
   const markdown = markdownSerializer.serialize(state.doc);
 
   // If title is provided, add/update frontmatter
   if (title !== undefined) {
     // Check if frontmatter already exists
-    const hasFrontmatter = markdown.startsWith('---\n');
+    const hasFrontmatter = markdown.startsWith("---\n");
 
     if (hasFrontmatter) {
       // Replace existing frontmatter
-      return markdown.replace(/^---\n[\s\S]*?\n---\n/, `---\ntitle: ${title}\n---\n`);
+      return markdown.replace(
+        /^---\n[\s\S]*?\n---\n/,
+        `---\ntitle: ${title}\n---\n`,
+      );
     } else {
       // Add new frontmatter
       return `---\ntitle: ${title}\n---\n\n${markdown}`;
