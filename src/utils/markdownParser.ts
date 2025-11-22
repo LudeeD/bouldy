@@ -1,5 +1,4 @@
 import { MarkdownParser } from "prosemirror-markdown";
-import { Schema } from "prosemirror-model";
 import { Plugin } from "prosemirror-state";
 import MarkdownIt from "markdown-it";
 import { mySchema } from "./editorSchema";

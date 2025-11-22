@@ -17,7 +17,7 @@ export function useAutoSave({
   delay = 3000,
   title,
 }: UseAutoSaveProps) {
-  const timeoutRef = useRef<number>();
+  const timeoutRef = useRef<number>(0);
   const lastSavedStateRef = useRef<EditorState | null>(null);
 
   useEffect(() => {

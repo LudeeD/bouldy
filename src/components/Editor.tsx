@@ -18,7 +18,6 @@ import { useNotes } from "../contexts/NotesContext";
 import { useAutoSave } from "../hooks/useAutoSave";
 import EditorToolbar from "./EditorToolbar";
 import { mySchema } from "../utils/editorSchema";
-import { serializeToMarkdown } from "../utils/markdownSerializer";
 
 // Create markdown input rules
 function buildInputRules(schema: Schema) {
