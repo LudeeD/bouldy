@@ -20,12 +20,28 @@ export const markdownSerializer = new MarkdownSerializer(
   },
 );
 
-export function serializeToMarkdown(state: EditorState): string {
-  return markdownSerializer.serialize(state.doc);
+export function serializeToMarkdown(state: EditorState, title?: string): string {
+  const markdown = markdownSerializer.serialize(state.doc);
+
+  // If title is provided, add/update frontmatter
+  if (title !== undefined) {
+    // Check if frontmatter already exists
+    const hasFrontmatter = markdown.startsWith('---\n');
+
+    if (hasFrontmatter) {
+      // Replace existing frontmatter
+      return markdown.replace(/^---\n[\s\S]*?\n---\n/, `---\ntitle: ${title}\n---\n`);
+    } else {
+      // Add new frontmatter
+      return `---\ntitle: ${title}\n---\n\n${markdown}`;
+    }
+  }
+
+  return markdown;
 }
 
 export function extractTitle(markdown: string): string {
-  // Try to extract title from YAML frontmatter
+  // Only extract title from YAML frontmatter
   const frontmatterMatch = markdown.match(/^---\n([\s\S]*?)\n---/);
   if (frontmatterMatch) {
     const titleMatch = frontmatterMatch[1].match(/title:\s*["']?(.+?)["']?\n/);
@@ -34,15 +50,6 @@ export function extractTitle(markdown: string): string {
     }
   }
 
-  // Fall back to first H1 heading
-  const h1Match = markdown.match(/^#\s+(.+)$/m);
-  if (h1Match) {
-    return h1Match[1].trim();
-  }
-
-  // Fall back to first line (max 50 chars)
-  const firstLine = markdown.split("\n")[0].trim();
-  return firstLine.length > 50
-    ? firstLine.substring(0, 47) + "..."
-    : firstLine || "Untitled";
+  // Default to "Untitled" if no frontmatter title found
+  return "Untitled";
 }

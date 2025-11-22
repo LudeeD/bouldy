@@ -2,7 +2,7 @@ import { useNotes } from "../contexts/NotesContext";
 
 import { useState } from "react";
 import NewNoteDialog from "./NewNoteDialog";
-import { Icon, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 interface RecentNotesBarProps {
   activePath: string | undefined;

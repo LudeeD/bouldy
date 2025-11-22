@@ -48,7 +48,6 @@ export const markdownParser = new MarkdownParser(mySchema, new MarkdownIt(), {
 
 export function parseMarkdown(
   markdown: string,
-  schema: Schema,
   plugins: Plugin[] = [],
 ) {
   const doc = markdownParser.parse(markdown);

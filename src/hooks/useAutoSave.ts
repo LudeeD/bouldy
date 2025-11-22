@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
 import { EditorState } from "prosemirror-state";
-import { serializeToMarkdown, extractTitle } from "../utils/markdownSerializer";
+import { serializeToMarkdown } from "../utils/markdownSerializer";
 
 interface UseAutoSaveProps {
   editorState: EditorState | null;
   onSave: (content: string, title: string) => Promise<void>;
   enabled: boolean;
   delay?: number;
+  title: string;
 }
 
 export function useAutoSave({
@@ -14,8 +15,9 @@ export function useAutoSave({
   onSave,
   enabled,
   delay = 3000,
+  title,
 }: UseAutoSaveProps) {
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<number>();
   const lastSavedStateRef = useRef<EditorState | null>(null);
 
   useEffect(() => {
@@ -36,8 +38,7 @@ export function useAutoSave({
     // Set new timeout for auto-save
     timeoutRef.current = setTimeout(async () => {
       try {
-        const content = serializeToMarkdown(editorState);
-        const title = extractTitle(content);
+        const content = serializeToMarkdown(editorState, title);
         await onSave(content, title);
         lastSavedStateRef.current = editorState;
       } catch (error) {
@@ -51,7 +52,7 @@ export function useAutoSave({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [editorState, onSave, enabled, delay]);
+  }, [editorState, onSave, enabled, delay, title]);
 
   // Manual save function
   const saveNow = async () => {
@@ -62,8 +63,7 @@ export function useAutoSave({
     }
 
     try {
-      const content = serializeToMarkdown(editorState);
-      const title = extractTitle(content);
+      const content = serializeToMarkdown(editorState, title);
       await onSave(content, title);
       lastSavedStateRef.current = editorState;
     } catch (error) {

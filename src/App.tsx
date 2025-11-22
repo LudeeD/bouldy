@@ -138,7 +138,7 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
               e.stopPropagation();
               closePanel(side);
             }}
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 bg-bg-light rounded-full hover:bg-danger hover:text-white transition-all z-20"
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 bg-bg-light rounded-full hover:bg-danger hover:text-white transition-all z-20 flex items-center justify-center"
             title="Close Panel"
           >
             <svg

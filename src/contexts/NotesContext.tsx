@@ -20,6 +20,7 @@ interface NotesContextType {
   createNote: (title: string) => Promise<void>;
   deleteNote: (path: string) => Promise<void>;
   saveCurrentNote: (content: string, title: string) => Promise<void>;
+  updateNoteTitle: (newTitle: string) => void;
   setCurrentNote: (note: Note | null) => void;
   setIsDirty: (dirty: boolean) => void;
   clearError: () => void;
@@ -85,7 +86,7 @@ export function NotesProvider({ children, vaultPath }: NotesProviderProps) {
         const filename = `${slug}-${timestamp}.md`;
         const path = `${vaultPath}/${filename}`;
 
-        const initialContent = `# ${title}\n\n`;
+        const initialContent = `---\ntitle: ${title}\n---\n\n`;
 
         const note = await invoke<Note>("write_note", {
           path,
@@ -144,6 +145,17 @@ export function NotesProvider({ children, vaultPath }: NotesProviderProps) {
     [currentNote],
   );
 
+  const updateNoteTitle = useCallback((newTitle: string) => {
+    if (!currentNote) return;
+
+    const updatedNote = { ...currentNote, title: newTitle };
+    setCurrentNote(updatedNote);
+    setNotes((prev) =>
+      prev.map((n) => (n.path === updatedNote.path ? updatedNote : n)),
+    );
+    setIsDirty(true);
+  }, [currentNote]);
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -162,6 +174,7 @@ export function NotesProvider({ children, vaultPath }: NotesProviderProps) {
         createNote,
         deleteNote,
         saveCurrentNote,
+        updateNoteTitle,
         setCurrentNote,
         setIsDirty,
         clearError,

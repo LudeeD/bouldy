@@ -18,6 +18,7 @@ import { useNotes } from "../contexts/NotesContext";
 import { useAutoSave } from "../hooks/useAutoSave";
 import EditorToolbar from "./EditorToolbar";
 import { mySchema } from "../utils/editorSchema";
+import { serializeToMarkdown } from "../utils/markdownSerializer";
 
 // Create markdown input rules
 function buildInputRules(schema: Schema) {
@@ -53,7 +54,10 @@ export default function Editor() {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [editorState, setEditorState] = useState<EditorState | null>(null);
-  const { currentNote, openNote, saveCurrentNote, setIsDirty, isSaving } =
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState("");
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const { currentNote, openNote, saveCurrentNote, setIsDirty, isSaving, updateNoteTitle } =
     useNotes();
 
   const { saveNow } = useAutoSave({
@@ -61,6 +65,7 @@ export default function Editor() {
     onSave: saveCurrentNote,
     enabled: currentNote !== null,
     delay: 3000,
+    title: currentNote?.title || "Untitled",
   });
 
   // Store saveNow in a ref so plugins can access latest version
@@ -140,7 +145,7 @@ export default function Editor() {
         const cleanContent = stripFrontmatter(content);
 
         // Parse markdown to get new document
-        const { doc } = parseMarkdown(cleanContent, mySchema, createPlugins());
+        const { doc } = parseMarkdown(cleanContent, createPlugins());
 
         // Create new state with updated content but KEEP the same view
         const newState = EditorState.create({
@@ -150,8 +155,10 @@ export default function Editor() {
         });
 
         // Update the existing view with new state
-        viewRef.current.updateState(newState);
-        setEditorState(newState);
+        if (viewRef.current) {
+          viewRef.current.updateState(newState);
+          setEditorState(newState);
+        }
       } catch (error) {
         console.error("Failed to load note:", error);
       }
@@ -162,6 +169,33 @@ export default function Editor() {
 
   const handleSelectNote = (path: string) => {
     openNote(path);
+  };
+
+  const handleTitleClick = () => {
+    if (currentNote) {
+      setTitleValue(currentNote.title);
+      setEditingTitle(true);
+      setTimeout(() => titleInputRef.current?.select(), 0);
+    }
+  };
+
+  const handleTitleBlur = () => {
+    if (titleValue.trim() && titleValue !== currentNote?.title) {
+      updateNoteTitle(titleValue.trim());
+    } else if (!titleValue.trim() && currentNote) {
+      setTitleValue(currentNote.title);
+    }
+    setEditingTitle(false);
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      titleInputRef.current?.blur();
+    } else if (e.key === "Escape") {
+      setTitleValue(currentNote?.title || "");
+      setEditingTitle(false);
+    }
   };
 
   return (
@@ -202,9 +236,26 @@ export default function Editor() {
               <div className="flex items-center justify-between px-4 py-2.5 border-b-2 border-border bg-bg-light">
                 {/* Left: Title with save indicator */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <h1 className="text-2xl font-normal text-text tracking-tight truncate">
-                    {currentNote.title}
-                  </h1>
+                  {editingTitle ? (
+                    <input
+                      ref={titleInputRef}
+                      type="text"
+                      value={titleValue}
+                      onChange={(e) => setTitleValue(e.target.value)}
+                      onBlur={handleTitleBlur}
+                      onKeyDown={handleTitleKeyDown}
+                      className="text-2xl font-normal text-text tracking-tight bg-transparent border-none outline-none focus:outline-none min-w-0 flex-1"
+                      autoFocus
+                    />
+                  ) : (
+                    <h1
+                      className="text-2xl font-normal text-text tracking-tight truncate cursor-text hover:text-primary transition-colors"
+                      onClick={handleTitleClick}
+                      title="Click to edit title"
+                    >
+                      {currentNote.title}
+                    </h1>
+                  )}
                   {isSaving && (
                     <div className="flex-shrink-0">
                       <div
