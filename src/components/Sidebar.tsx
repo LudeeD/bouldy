@@ -1,0 +1,173 @@
+import { FileText, CheckSquare, Calendar, Settings, FolderOpen, LayoutPanelLeft, LayoutPanelTop } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+
+type PanelType = 'editor' | 'todos' | 'calendar' | 'settings';
+
+interface SidebarProps {
+  activePanels: {
+    left: PanelType | null;
+    right: PanelType | null;
+  };
+  onOpenPanel: (type: PanelType, side?: 'left' | 'right') => void;
+}
+
+interface SidebarButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  activeSide: 'left' | 'right' | 'both' | null;
+  onClick: () => void;
+  onOpenLeft: (e: React.MouseEvent) => void;
+  onOpenRight: (e: React.MouseEvent) => void;
+}
+
+function SidebarButton({ icon, label, activeSide, onClick, onOpenLeft, onOpenRight }: SidebarButtonProps) {
+  const [showSplit, setShowSplit] = useState(false);
+  const timeoutRef = useRef<number | null>(null);
+
+  const handleMouseEnter = () => {
+    // Clear any existing timeout
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    // Set new timeout to show split buttons after delay
+    timeoutRef.current = window.setTimeout(() => {
+      setShowSplit(true);
+    }, 500);
+  };
+
+  const handleMouseLeave = () => {
+    // Clear timeout and reset state immediately
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setShowSplit(false);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  return (
+    <div
+      className="relative w-12 h-12 flex items-center justify-center"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Default State: Single Icon */}
+      <button
+        onClick={onClick}
+        className={`absolute inset-0 rounded flex items-center justify-center transition-all duration-200 ${showSplit ? 'opacity-0 scale-90 pointer-events-none' : 'opacity-100 scale-100'
+          } ${activeSide
+            ? 'text-primary bg-highlight'
+            : 'text-text-muted hover:bg-highlight hover:text-primary'
+          }`}
+        aria-label={label}
+        title={label}
+      >
+        {icon}
+      </button>
+
+      {/* Hover State: Split Buttons */}
+      <div className={`absolute inset-0 flex gap-1 transition-all duration-200 ${showSplit ? 'opacity-100 scale-100' : 'opacity-0 scale-110 pointer-events-none'
+        }`}>
+        {/* Left Button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onOpenLeft(e); }}
+          className={`flex-1 rounded flex items-center justify-center hover:bg-highlight transition-colors ${activeSide === 'left' || activeSide === 'both'
+            ? 'text-primary bg-highlight'
+            : 'text-text-muted'
+            }`}
+          title="Open on Left"
+        >
+          <LayoutPanelLeft size={16} />
+        </button>
+
+        {/* Right Button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onOpenRight(e); }}
+          className={`flex-1 rounded flex items-center justify-center hover:bg-highlight transition-colors ${activeSide === 'right' || activeSide === 'both'
+            ? 'text-primary bg-highlight'
+            : 'text-text-muted'
+            }`}
+          title="Open on Right"
+        >
+          <LayoutPanelTop size={16} className="rotate-90" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function Sidebar({ activePanels, onOpenPanel }: SidebarProps) {
+  const getActiveSide = (type: PanelType): 'left' | 'right' | 'both' | null => {
+    if (activePanels.left === type && activePanels.right === type) return 'both';
+    if (activePanels.left === type) return 'left';
+    if (activePanels.right === type) return 'right';
+    return null;
+  };
+
+  return (
+    <div className="w-16 bg-bg-dark flex flex-col items-center py-4 border-r border-border z-20">
+      {/* Icon buttons */}
+      <div className="flex flex-col gap-4">
+        <SidebarButton
+          icon={<FileText size={20} />}
+          label="Editor"
+          activeSide={getActiveSide('editor')}
+          onClick={() => onOpenPanel('editor')}
+          onOpenLeft={() => onOpenPanel('editor', 'left')}
+          onOpenRight={() => onOpenPanel('editor', 'right')}
+        />
+
+        <SidebarButton
+          icon={<CheckSquare size={20} />}
+          label="Todos"
+          activeSide={getActiveSide('todos')}
+          onClick={() => onOpenPanel('todos')}
+          onOpenLeft={() => onOpenPanel('todos', 'left')}
+          onOpenRight={() => onOpenPanel('todos', 'right')}
+        />
+
+        <SidebarButton
+          icon={<Calendar size={20} />}
+          label="Calendar"
+          activeSide={getActiveSide('calendar')}
+          onClick={() => onOpenPanel('calendar')}
+          onOpenLeft={() => onOpenPanel('calendar', 'left')}
+          onOpenRight={() => onOpenPanel('calendar', 'right')}
+        />
+
+        <div className="h-px bg-border w-8 mx-auto my-2" />
+
+        <button
+          className="p-3 rounded hover:bg-highlight text-text-muted hover:text-primary transition-colors"
+          aria-label="Vault"
+        >
+          <FolderOpen size={20} />
+        </button>
+      </div>
+
+      {/* Spacer */}
+      <div className="flex-1" />
+
+      {/* Settings Button - Now a Panel */}
+      <div className="mb-4">
+        <SidebarButton
+          icon={<Settings size={20} />}
+          label="Settings"
+          activeSide={getActiveSide('settings')}
+          onClick={() => onOpenPanel('settings')}
+          onOpenLeft={() => onOpenPanel('settings', 'left')}
+          onOpenRight={() => onOpenPanel('settings', 'right')}
+        />
+      </div>
+
+      <div className="writing-mode-vertical text-text-muted font-medium text-sm tracking-wider">
+        <span className="rotate-180 inline-block">Something</span>
+      </div>
+    </div>
+  );
+}
