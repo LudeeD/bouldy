@@ -246,9 +246,9 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
   // Calculate visible panels based on narrow screen mode
   const visiblePanels = isNarrowScreen
     ? {
-        left: mruSide === "left" ? panels.left : null,
-        right: mruSide === "right" ? panels.right : null,
-      }
+      left: mruSide === "left" ? panels.left : null,
+      right: mruSide === "right" ? panels.right : null,
+    }
     : panels;
 
   return (
@@ -285,14 +285,14 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
             <>
               {/* Left panel with min-width */}
               {panels.left && (
-                <div className="flex-1 min-w-[600px] flex flex-col overflow-hidden">
+                <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
                   {renderSlot("left")}
                 </div>
               )}
 
               {/* Right panel with min-width */}
               {panels.right && (
-                <div className="flex-1 min-w-[600px] flex flex-col overflow-hidden">
+                <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
                   {renderSlot("right")}
                 </div>
               )}

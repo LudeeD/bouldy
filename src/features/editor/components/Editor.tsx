@@ -54,27 +54,30 @@ export default function Editor() {
   };
 
   // Memoize plugins array to prevent recreation on every render
-  const plugins = useMemo(() => [
-    headingsPlugin(),
-    listsPlugin(),
-    quotePlugin(),
-    thematicBreakPlugin(),
-    markdownShortcutPlugin(),
-    linkPlugin(),
-    linkDialogPlugin(),
-    toolbarPlugin({
-      toolbarContents: () => (
-        <>
-          <UndoRedo />
-          <BoldItalicUnderlineToggles />
-          <CodeToggle />
-          <BlockTypeSelect />
-          <CreateLink />
-          <ListsToggle />
-        </>
-      ),
-    }),
-  ], []);
+  const plugins = useMemo(
+    () => [
+      headingsPlugin(),
+      listsPlugin(),
+      quotePlugin(),
+      thematicBreakPlugin(),
+      markdownShortcutPlugin(),
+      linkPlugin(),
+      linkDialogPlugin(),
+      toolbarPlugin({
+        toolbarContents: () => (
+          <>
+            <UndoRedo />
+            <BoldItalicUnderlineToggles />
+            <CodeToggle />
+            <BlockTypeSelect />
+            <CreateLink />
+            <ListsToggle />
+          </>
+        ),
+      }),
+    ],
+    [],
+  );
 
   // Load note content when currentNote PATH changes (not the object)
   useEffect(() => {
@@ -86,11 +89,17 @@ export default function Editor() {
     const loadContent = async () => {
       try {
         const { invoke } = await import("@tauri-apps/api/core");
-        const metadata = await invoke<{ title: string; content: string }>("read_note", {
-          path: currentNote.path
-        });
+        const metadata = await invoke<{ title: string; content: string }>(
+          "read_note",
+          {
+            path: currentNote.path,
+          },
+        );
         // Strip YAML frontmatter
-        const cleanContent = metadata.content.replace(/^---\n[\s\S]*?\n---\n/, "");
+        const cleanContent = metadata.content.replace(
+          /^---\n[\s\S]*?\n---\n/,
+          "",
+        );
         // Use ref method to update editor content
         editorRef.current?.setMarkdown(cleanContent);
         // Update state for auto-save
@@ -134,10 +143,13 @@ export default function Editor() {
     }
   };
 
-  const handleMarkdownChange = useCallback((newMarkdown: string) => {
-    setMarkdown(newMarkdown);
-    setIsDirty(true);
-  }, [setIsDirty]);
+  const handleMarkdownChange = useCallback(
+    (newMarkdown: string) => {
+      setMarkdown(newMarkdown);
+      setIsDirty(true);
+    },
+    [setIsDirty],
+  );
 
   return (
     <div className="w-full h-full flex flex-col bg-bg-light border border-border-muted shadow-sm overflow-hidden relative z-10">
@@ -222,11 +234,11 @@ export default function Editor() {
               {/* MDXEditor Content Area */}
               <div className="flex-1 overflow-y-auto overflow-x-hidden">
                 <MDXEditor
-                  key={currentNote?.path || 'empty'}
+                  key={currentNote?.path || "empty"}
                   ref={editorRef}
                   markdown=""
                   onChange={handleMarkdownChange}
-                  contentEditableClassName="prose dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:leading-tight"
+                  contentEditableClassName="prose max-w-none prose-p:leading-relaxed prose-headings:leading-tight"
                   plugins={plugins}
                   className="mdxeditor-custom"
                 />

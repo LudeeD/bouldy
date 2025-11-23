@@ -21,7 +21,8 @@
     "lucide-react": "^0.553.0",
     "posthog-js": "^1.297.2",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-scan": "^0.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
