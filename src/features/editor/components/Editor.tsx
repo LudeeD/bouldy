@@ -1,58 +1,31 @@
-import { useEffect, useRef, useState } from "react";
-import { EditorState, Transaction } from "prosemirror-state";
-import { EditorView } from "prosemirror-view";
-import { Schema } from "prosemirror-model";
-import { keymap } from "prosemirror-keymap";
-import { history, undo, redo } from "prosemirror-history";
-import { baseKeymap, toggleMark, setBlockType } from "prosemirror-commands";
+import { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import {
-  inputRules,
-  wrappingInputRule,
-  textblockTypeInputRule,
-  smartQuotes,
-  emDash,
-  ellipsis,
-} from "prosemirror-inputrules";
-import { parseMarkdown, stripFrontmatter } from "../utils/markdown-parser";
+  MDXEditor,
+  headingsPlugin,
+  listsPlugin,
+  quotePlugin,
+  thematicBreakPlugin,
+  markdownShortcutPlugin,
+  linkPlugin,
+  linkDialogPlugin,
+  toolbarPlugin,
+  UndoRedo,
+  BoldItalicUnderlineToggles,
+  BlockTypeSelect,
+  CodeToggle,
+  CreateLink,
+  ListsToggle,
+  type MDXEditorMethods,
+} from "@mdxeditor/editor";
+import "@mdxeditor/editor/style.css";
+import { Save } from "lucide-react";
 import { useNotes } from "../../notes/context/NotesContext";
 import { useAutoSave } from "../hooks/useAutoSave";
-import EditorToolbar from "./EditorToolbar";
-import { mySchema } from "../utils/schema";
-
-// Create markdown input rules
-function buildInputRules(schema: Schema) {
-  const rules = [
-    // Headings: # H1, ## H2, ### H3 (supports up to level 6)
-    textblockTypeInputRule(/^(#{1,6})\s$/, schema.nodes.heading, (match) => ({
-      level: match[1].length,
-    })),
-
-    // Bullet list: * or -
-    wrappingInputRule(/^\s*([-+*])\s$/, schema.nodes.bullet_list),
-
-    // Ordered list: 1.
-    wrappingInputRule(/^(\d+)\.\s$/, schema.nodes.ordered_list),
-
-    // Blockquote: >
-    wrappingInputRule(/^\s*>\s$/, schema.nodes.blockquote),
-
-    // Smart quotes and other typographic rules
-    ...smartQuotes,
-    emDash,
-    ellipsis,
-  ];
-
-  return inputRules({ rules });
-}
-
 import RecentNotesBar from "../../notes/components/RecentNotesBar";
 
-// ... existing imports ...
-
 export default function Editor() {
-  const editorRef = useRef<HTMLDivElement>(null);
-  const viewRef = useRef<EditorView | null>(null);
-  const [editorState, setEditorState] = useState<EditorState | null>(null);
+  const editorRef = useRef<MDXEditorMethods>(null);
+  const [markdown, setMarkdown] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState("");
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -62,108 +35,66 @@ export default function Editor() {
     saveCurrentNote,
     setIsDirty,
     isSaving,
+    isDirty,
     updateNoteTitle,
   } = useNotes();
 
   const { saveNow } = useAutoSave({
-    editorState,
+    markdown,
     onSave: saveCurrentNote,
     enabled: currentNote !== null,
     delay: 3000,
     title: currentNote?.title || "Untitled",
   });
 
-  // Store saveNow in a ref so plugins can access latest version
-  const saveNowRef = useRef(saveNow);
-  useEffect(() => {
-    saveNowRef.current = saveNow;
-  }, [saveNow]);
+  const handleManualSave = async () => {
+    if (isDirty && currentNote) {
+      await saveNow();
+    }
+  };
 
-  // Create plugins array (using ref to get latest saveNow)
-  const createPlugins = () => [
-    buildInputRules(mySchema),
-    history(),
-    keymap({
-      "Mod-b": toggleMark(mySchema.marks.strong),
-      "Mod-i": toggleMark(mySchema.marks.em),
-      "Mod-`": toggleMark(mySchema.marks.code),
-      "Mod-Alt-1": setBlockType(mySchema.nodes.heading, { level: 1 }),
-      "Mod-Alt-2": setBlockType(mySchema.nodes.heading, { level: 2 }),
-      "Mod-Alt-3": setBlockType(mySchema.nodes.heading, { level: 3 }),
-      "Mod-Alt-0": setBlockType(mySchema.nodes.paragraph),
-      "Mod-z": undo,
-      "Mod-y": redo,
-      "Mod-Shift-z": redo,
-      "Mod-s": () => {
-        saveNowRef.current();
-        return true;
-      },
+  // Memoize plugins array to prevent recreation on every render
+  const plugins = useMemo(() => [
+    headingsPlugin(),
+    listsPlugin(),
+    quotePlugin(),
+    thematicBreakPlugin(),
+    markdownShortcutPlugin(),
+    linkPlugin(),
+    linkDialogPlugin(),
+    toolbarPlugin({
+      toolbarContents: () => (
+        <>
+          <UndoRedo />
+          <BoldItalicUnderlineToggles />
+          <CodeToggle />
+          <BlockTypeSelect />
+          <CreateLink />
+          <ListsToggle />
+        </>
+      ),
     }),
-    keymap(baseKeymap),
-  ];
+  ], []);
 
-  // Initialize editor view when a note is selected and editorRef is available
+  // Load note content when currentNote PATH changes (not the object)
   useEffect(() => {
-    if (!currentNote || !editorRef.current) return;
-
-    // Create initial empty document
-    const doc = mySchema.node("doc", null, [mySchema.node("paragraph")]);
-
-    const state = EditorState.create({
-      doc,
-      schema: mySchema,
-      plugins: createPlugins(),
-    });
-
-    // Create editor view that persists for the component lifetime
-    const view = new EditorView(editorRef.current, {
-      state,
-      dispatchTransaction(transaction: Transaction) {
-        const newState = view.state.apply(transaction);
-        view.updateState(newState);
-        setEditorState(newState);
-
-        if (transaction.docChanged) {
-          setIsDirty(true);
-        }
-      },
-    });
-
-    viewRef.current = view;
-    setEditorState(state);
-
-    // Cleanup when note is deselected (or component unmounts)
-    return () => {
-      view.destroy();
-      viewRef.current = null;
-      setEditorState(null);
-    };
-  }, [!!currentNote]); // Run when we switch between "no note" and "has note"
-
-  // Update content when currentNote changes (without recreating view)
-  useEffect(() => {
-    if (!viewRef.current || !currentNote) return;
+    if (!currentNote) {
+      editorRef.current?.setMarkdown("");
+      return;
+    }
 
     const loadContent = async () => {
       try {
-        const content = await openNote(currentNote.path);
-        const cleanContent = stripFrontmatter(content);
-
-        // Parse markdown to get new document
-        const { doc } = parseMarkdown(cleanContent, createPlugins());
-
-        // Create new state with updated content but KEEP the same view
-        const newState = EditorState.create({
-          doc,
-          schema: mySchema,
-          plugins: createPlugins(),
+        const { invoke } = await import("@tauri-apps/api/core");
+        const metadata = await invoke<{ title: string; content: string }>("read_note", {
+          path: currentNote.path
         });
-
-        // Update the existing view with new state
-        if (viewRef.current) {
-          viewRef.current.updateState(newState);
-          setEditorState(newState);
-        }
+        // Strip YAML frontmatter
+        const cleanContent = metadata.content.replace(/^---\n[\s\S]*?\n---\n/, "");
+        // Use ref method to update editor content
+        editorRef.current?.setMarkdown(cleanContent);
+        // Update state for auto-save
+        setMarkdown(cleanContent);
       } catch (error) {
         console.error("Failed to load note:", error);
       }
@@ -172,8 +103,8 @@ export default function Editor() {
     loadContent();
   }, [currentNote?.path]);
 
-  const handleSelectNote = (path: string) => {
-    openNote(path);
+  const handleSelectNote = async (path: string) => {
+    await openNote(path);
   };
 
   const handleTitleClick = () => {
@@ -202,6 +133,11 @@ export default function Editor() {
       setEditingTitle(false);
     }
   };
+
+  const handleMarkdownChange = useCallback((newMarkdown: string) => {
+    setMarkdown(newMarkdown);
+    setIsDirty(true);
+  }, [setIsDirty]);
 
   return (
     <div className="w-full h-full flex flex-col bg-bg-light border border-border-muted shadow-sm overflow-hidden relative z-10">
@@ -235,9 +171,9 @@ export default function Editor() {
           </div>
         ) : (
           <>
-            {/* Editor Surface - Single unified surface */}
+            {/* Editor Surface */}
             <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Combined Header: Title + Toolbar */}
+              {/* Header: Title */}
               <div className="h-20 flex items-center justify-between px-4 py-2.5 border-b-2 border-border bg-bg-light">
                 {/* Left: Title with save indicator */}
                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -271,24 +207,29 @@ export default function Editor() {
                   )}
                 </div>
 
-                {/* Right: Toolbar */}
-                <div className="flex-shrink-0 ml-6">
-                  <EditorToolbar view={viewRef.current} />
-                </div>
+                {/* Right: Manual save button */}
+                <button
+                  onClick={handleManualSave}
+                  disabled={!isDirty || isSaving}
+                  className="flex items-center gap-2 px-3 py-2 border-2 border-border bg-bg hover:bg-highlight hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title={isDirty ? "Save now (Cmd+S)" : "No unsaved changes"}
+                >
+                  <Save size={16} />
+                  <span className="text-sm font-medium">Save</span>
+                </button>
               </div>
 
-              {/* Editor Content Area */}
-              <div
-                className="flex-1 overflow-auto cursor-text scroll-smooth prose prose-full max-w-none w-full"
-                onClick={() => {
-                  if (viewRef.current && !viewRef.current.hasFocus()) {
-                    viewRef.current.focus();
-                  }
-                }}
-              >
-                <div className="px-4 py-6">
-                  <div ref={editorRef} />
-                </div>
+              {/* MDXEditor Content Area */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                <MDXEditor
+                  key={currentNote?.path || 'empty'}
+                  ref={editorRef}
+                  markdown=""
+                  onChange={handleMarkdownChange}
+                  contentEditableClassName="prose dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:leading-tight"
+                  plugins={plugins}
+                  className="mdxeditor-custom"
+                />
               </div>
             </div>
           </>

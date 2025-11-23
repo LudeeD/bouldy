@@ -1,9 +1,7 @@
 import { useEffect, useRef } from "react";
-import { EditorState } from "prosemirror-state";
-import { serializeToMarkdown } from "../utils/markdown-serializer";
 
 interface UseAutoSaveProps {
-  editorState: EditorState | null;
+  markdown: string;
   onSave: (content: string, title: string) => Promise<void>;
   enabled: boolean;
   delay?: number;
@@ -11,22 +9,22 @@ interface UseAutoSaveProps {
 }
 
 export function useAutoSave({
-  editorState,
+  markdown,
   onSave,
   enabled,
   delay = 3000,
   title,
 }: UseAutoSaveProps) {
   const timeoutRef = useRef<number>(0);
-  const lastSavedStateRef = useRef<EditorState | null>(null);
+  const lastSavedMarkdownRef = useRef<string>("");
 
   useEffect(() => {
-    if (!enabled || !editorState) {
+    if (!enabled || !markdown) {
       return;
     }
 
-    // Skip if state hasn't changed
-    if (lastSavedStateRef.current === editorState) {
+    // Skip if content hasn't changed
+    if (lastSavedMarkdownRef.current === markdown) {
       return;
     }
 
@@ -38,9 +36,10 @@ export function useAutoSave({
     // Set new timeout for auto-save
     timeoutRef.current = setTimeout(async () => {
       try {
-        const content = serializeToMarkdown(editorState, title);
-        await onSave(content, title);
-        lastSavedStateRef.current = editorState;
+        // Add YAML frontmatter back
+        const contentWithFrontmatter = `---\ntitle: ${title}\n---\n\n${markdown}`;
+        await onSave(contentWithFrontmatter, title);
+        lastSavedMarkdownRef.current = markdown;
       } catch (error) {
         console.error("Auto-save failed:", error);
       }
@@ -52,20 +51,21 @@ export function useAutoSave({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [editorState, onSave, enabled, delay, title]);
+  }, [markdown, onSave, enabled, delay, title]);
 
   // Manual save function
   const saveNow = async () => {
-    if (!editorState) return;
+    if (!markdown) return;
 
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
 
     try {
-      const content = serializeToMarkdown(editorState, title);
-      await onSave(content, title);
-      lastSavedStateRef.current = editorState;
+      // Add YAML frontmatter back
+      const contentWithFrontmatter = `---\ntitle: ${title}\n---\n\n${markdown}`;
+      await onSave(contentWithFrontmatter, title);
+      lastSavedMarkdownRef.current = markdown;
     } catch (error) {
       console.error("Manual save failed:", error);
     }
