@@ -2,8 +2,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { PostHogProvider } from "posthog-js/react";
-import { scan } from "react-scan";
 
+//import { scan } from "react-scan";
 //scan({ enabled: import.meta.env.DEV });
 
 const options = {

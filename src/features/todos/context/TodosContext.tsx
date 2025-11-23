@@ -39,7 +39,7 @@ export function TodosProvider({ children, vaultPath }: TodosProviderProps) {
   const [todos, setTodosState] = useState<TodoItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const saveTimeoutRef = useRef<number | null>(null);
+  const saveTimeoutRef = useRef<any>(null);
 
   const loadTodos = useCallback(async () => {
     try {
