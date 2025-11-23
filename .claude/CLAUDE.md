@@ -2,15 +2,14 @@
 
 ## Project Overview
 
-Bouldy is a lightweight desktop note-taking application built with Tauri 2 + React 19 + ProseMirror. The app uses a vault-based system where all notes are stored as markdown files with YAML frontmatter, giving users full control over their data. Features include a ProseMirror editor with auto-save, dual-panel layout system, integrated todos, calendar view, and customizable themes.
+Bouldy is a lightweight desktop note-taking application built with Tauri 2 + React 19 + MDXEditor. The app uses a vault-based system where all notes are stored as markdown files with YAML frontmatter, giving users full control over their data. Features include an MDXEditor-based markdown editor with auto-save, dual-panel layout system, integrated todos, calendar view, and customizable themes.
 
 ## Architecture
 
 ### Frontend Stack
 - **React 19** with TypeScript for UI components
 - **Tailwind CSS v4** for styling (using `@import "tailwindcss"` syntax)
-- **ProseMirror** for rich text editing
-- **markdown-it** for markdown parsing/serialization
+- **MDXEditor** (@mdxeditor/editor) for rich markdown editing
 - **lucide-react** for icons
 - **Vite** as the build tool
 
@@ -30,13 +29,13 @@ Bouldy is a lightweight desktop note-taking application built with Tauri 2 + Rea
 - No `@apply` directive - use utility classes directly in JSX
 - PostCSS plugin: `@tailwindcss/postcss`
 
-### ProseMirror
-- Must import `prosemirror-view/style/prosemirror.css` for proper editor behavior
-- Custom schema defined in `src/features/editor/utils/schema.ts`
-- Markdown parser/serializer using `markdown-it` in `src/features/editor/utils/`
-- Undo/redo history plugin enabled
-- Auto-save hook with 2-second debounce in `src/features/editor/hooks/useAutoSave.ts`
-- Editor toolbar component provides formatting controls
+### MDXEditor
+- Uses `@mdxeditor/editor` for rich markdown editing
+- Plugins enabled: headings, lists, quotes, thematic breaks, markdown shortcuts, links, toolbar
+- Toolbar provides: undo/redo, bold/italic/underline, code toggle, block type select, links, lists
+- Auto-save hook with 3-second debounce in `src/features/editor/hooks/useAutoSave.ts`
+- Content updates via `editorRef.current?.setMarkdown()` method (not reactive prop)
+- Custom styling in `src/styles/App.css` to match brutalist theme
 
 ### State Management
 - **React Context API** for global state
@@ -48,12 +47,11 @@ Bouldy is a lightweight desktop note-taking application built with Tauri 2 + Rea
 ```
 src/
 ├── features/           # Feature-based modules
-│   ├── editor/        # ProseMirror editor
-│   │   ├── components/ # Editor.tsx, EditorToolbar.tsx
-│   │   ├── hooks/     # useAutoSave.ts
-│   │   └── utils/     # schema.ts, markdown-parser.ts, markdown-serializer.ts
+│   ├── editor/        # MDXEditor wrapper
+│   │   ├── components/ # Editor.tsx
+│   │   └── hooks/     # useAutoSave.ts
 │   ├── notes/         # Note management
-│   │   ├── components/ # NewNoteDialog.tsx, NoteItem.tsx, RecentNotesBar.tsx
+│   │   ├── components/ # RecentNotesBar.tsx
 │   │   └── context/   # NotesContext.tsx
 │   ├── todos/         # Todo system
 │   │   ├── components/ # TodoSpace.tsx
@@ -113,13 +111,13 @@ src-tauri/src/
 - MRU (Most Recently Used) tracking determines which panel shows on narrow screens
 - Panel activation logic in `App.tsx` handles slot assignment and focus management
 
-### ProseMirror Guidelines
-- The editor state is managed in `src/features/editor/components/Editor.tsx`
-- Custom schema in `src/features/editor/utils/schema.ts`
-- Markdown bidirectional conversion via `markdown-parser.ts` and `markdown-serializer.ts`
-- Auto-save happens 2 seconds after typing stops via `useAutoSave` hook
-- For custom node types, extend the schema and update markdown serializer/parser
-- Always test undo/redo when adding new commands
+### MDXEditor Guidelines
+- The editor is managed in `src/features/editor/components/Editor.tsx`
+- Content updates must use `editorRef.current?.setMarkdown()` method, not the `markdown` prop (which acts like `defaultValue`)
+- Auto-save happens 3 seconds after typing stops via `useAutoSave` hook
+- YAML frontmatter is stripped when loading and added back when saving
+- Custom styling via `.mdxeditor-custom` class matches brutalist theme
+- Always test note switching to ensure content loads correctly
 
 ### Adding Tauri Commands
 1. Define Rust function in appropriate module under `src-tauri/src/`
@@ -131,7 +129,7 @@ src-tauri/src/
 - Use Tailwind utilities first
 - Dark mode: use `dark:` prefix for dark mode variants
 - Custom CSS only for:
-  - ProseMirror-specific styling (`.ProseMirror` class)
+  - MDXEditor styling (`.mdxeditor-custom` class)
   - Complex animations or interactions
   - Third-party library overrides
 
@@ -170,7 +168,7 @@ src-tauri/src/
 
 ## Current Status (v0.1.0)
 
-Working features: Vault-based markdown storage, ProseMirror editor with auto-save, dual-panel layout (editor/todos/calendar/settings), note management, todo system, 4 themes, responsive design.
+Working features: Vault-based markdown storage, MDXEditor with auto-save, dual-panel layout (editor/todos/calendar/settings), note management, todo system, 4 themes, responsive design.
 
 ## Common Commands
 
