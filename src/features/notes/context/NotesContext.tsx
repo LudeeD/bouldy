@@ -52,10 +52,18 @@ export function NotesProvider({ children, vaultPath }: NotesProviderProps) {
     try {
       const notesList = await invoke<Note[]>("list_vault_files", { vaultPath });
       setNotes(notesList);
+
+      // Auto-select the most recent note if no note is currently selected
+      if (!currentNote && notesList.length > 0) {
+        const mostRecent = notesList.reduce((latest, note) =>
+          note.modified > latest.modified ? note : latest
+        );
+        setCurrentNote(mostRecent);
+      }
     } catch (err) {
       setError(err as string);
     }
-  }, [vaultPath]);
+  }, [vaultPath, currentNote]);
 
   const openNote = useCallback(
     async (path: string): Promise<string> => {

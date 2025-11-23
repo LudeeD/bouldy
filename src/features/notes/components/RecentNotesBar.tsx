@@ -1,7 +1,4 @@
 import { useNotes } from "../context/NotesContext";
-
-import { useState } from "react";
-import NewNoteDialog from "./NewNoteDialog";
 import { Plus } from "lucide-react";
 
 interface RecentNotesBarProps {
@@ -14,20 +11,26 @@ export default function RecentNotesBar({
   onSelectNote,
 }: RecentNotesBarProps) {
   const { notes, createNote } = useNotes();
-  const [isNewNoteDialogOpen, setIsNewNoteDialogOpen] = useState(false);
 
   // Sort notes by modified timestamp (descending)
   const sortedNotes = [...notes].sort((a, b) => b.modified - a.modified);
 
-  const handleCreate = async (title: string) => {
+  const handleCreateNewNote = async () => {
+    // Create note with current date as title
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const title = `${year}-${month}-${day}`;
+
     await createNote(title);
   };
 
   return (
     <div className="h-15 w-full border-t-2 border-border flex items-center px-4 py-2.5">
       <button
-        onClick={() => setIsNewNoteDialogOpen(true)}
-        className="flex items-center gap-2 px-3 py-2 bg-primary text-bg-light rounded hover:opacity-90 transition-opacity text-sm font-medium"
+        onClick={handleCreateNewNote}
+        className="flex items-center gap-2 px-3 py-2 bg-primary text-bg-light hover:opacity-90 transition-opacity text-sm font-medium"
         title="New Note"
       >
         <Plus size={18} />
@@ -41,7 +44,7 @@ export default function RecentNotesBar({
           <button
             key={note.path}
             onClick={() => onSelectNote(note.path)}
-            className={`flex items-center px-3 py-2 rounded text-sm whitespace-nowrap transition-all duration-200 max-w-[200px] ${
+            className={`flex items-center px-3 py-2 text-sm whitespace-nowrap transition-all duration-200 max-w-[200px] ${
               activePath === note.path
                 ? "bg-highlight text-primary font-medium"
                 : "text-text-muted hover:bg-bg-light hover:text-text"
@@ -52,12 +55,6 @@ export default function RecentNotesBar({
           </button>
         ))}
       </div>
-
-      <NewNoteDialog
-        isOpen={isNewNoteDialogOpen}
-        onClose={() => setIsNewNoteDialogOpen(false)}
-        onCreate={handleCreate}
-      />
     </div>
   );
 }
