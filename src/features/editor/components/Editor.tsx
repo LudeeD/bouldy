@@ -18,17 +18,14 @@ import {
   type MDXEditorMethods,
 } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
-import { Save } from "lucide-react";
 import { useNotes } from "../../notes/context/NotesContext";
 import { useAutoSave } from "../hooks/useAutoSave";
 import RecentNotesBar from "../../notes/components/RecentNotesBar";
+import EditorHeader from "./EditorHeader";
 
 export default function Editor() {
   const editorRef = useRef<MDXEditorMethods>(null);
   const [markdown, setMarkdown] = useState("");
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [titleValue, setTitleValue] = useState("");
-  const titleInputRef = useRef<HTMLInputElement>(null);
   const {
     currentNote,
     openNote,
@@ -39,7 +36,7 @@ export default function Editor() {
     updateNoteTitle,
   } = useNotes();
 
-  const { saveNow } = useAutoSave({
+  const { saveNow, setBaseline } = useAutoSave({
     markdown,
     onSave: saveCurrentNote,
     enabled: currentNote !== null,
@@ -104,6 +101,7 @@ export default function Editor() {
         editorRef.current?.setMarkdown(cleanContent);
         // Update state for auto-save
         setMarkdown(cleanContent);
+        setBaseline(cleanContent);
       } catch (error) {
         console.error("Failed to load note:", error);
       }
@@ -116,32 +114,7 @@ export default function Editor() {
     await openNote(path);
   };
 
-  const handleTitleClick = () => {
-    if (currentNote) {
-      setTitleValue(currentNote.title);
-      setEditingTitle(true);
-      setTimeout(() => titleInputRef.current?.select(), 0);
-    }
-  };
 
-  const handleTitleBlur = () => {
-    if (titleValue.trim() && titleValue !== currentNote?.title) {
-      updateNoteTitle(titleValue.trim());
-    } else if (!titleValue.trim() && currentNote) {
-      setTitleValue(currentNote.title);
-    }
-    setEditingTitle(false);
-  };
-
-  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      titleInputRef.current?.blur();
-    } else if (e.key === "Escape") {
-      setTitleValue(currentNote?.title || "");
-      setEditingTitle(false);
-    }
-  };
 
   const handleMarkdownChange = useCallback(
     (newMarkdown: string) => {
@@ -185,51 +158,14 @@ export default function Editor() {
           <>
             {/* Editor Surface */}
             <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Header: Title */}
-              <div className="h-20 flex items-center justify-between px-4 py-2.5 border-b-2 border-border bg-bg-light">
-                {/* Left: Title with save indicator */}
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  {editingTitle ? (
-                    <input
-                      ref={titleInputRef}
-                      type="text"
-                      value={titleValue}
-                      onChange={(e) => setTitleValue(e.target.value)}
-                      onBlur={handleTitleBlur}
-                      onKeyDown={handleTitleKeyDown}
-                      className="text-2xl font-normal text-text tracking-tight bg-transparent border-none outline-none focus:outline-none min-w-0 flex-1"
-                      autoFocus
-                    />
-                  ) : (
-                    <h1
-                      className="text-2xl font-normal text-text tracking-tight truncate cursor-text hover:text-primary transition-colors"
-                      onClick={handleTitleClick}
-                      title="Click to edit title"
-                    >
-                      {currentNote.title}
-                    </h1>
-                  )}
-                  {isSaving && (
-                    <div className="flex-shrink-0">
-                      <div
-                        className="w-2 h-2 bg-primary rounded-full animate-pulse"
-                        title="Saving..."
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Right: Manual save button */}
-                <button
-                  onClick={handleManualSave}
-                  disabled={!isDirty || isSaving}
-                  className="flex items-center gap-2 px-3 py-2 border-2 border-border bg-bg hover:bg-highlight hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  title={isDirty ? "Save now (Cmd+S)" : "No unsaved changes"}
-                >
-                  <Save size={16} />
-                  <span className="text-sm font-medium">Save</span>
-                </button>
-              </div>
+              <EditorHeader
+                title={currentNote.title}
+                isSaving={isSaving}
+                isDirty={isDirty}
+                onManualSave={handleManualSave}
+                onTitleChange={updateNoteTitle}
+                onDirty={() => setIsDirty(true)}
+              />
 
               {/* MDXEditor Content Area */}
               <div className="flex-1 overflow-y-auto overflow-x-hidden">

@@ -267,8 +267,12 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
           data-tauri-drag-region
           className="flex items-center justify-between px-4 py-2 cursor-move bg-bg-dark border-border"
         >
-          <div className="text-xs text-primary font-mono">{vaultPath}</div>
-          <WindowControls />
+          <div className="text-xs text-primary font-mono min-w-0 truncate">
+            {vaultPath}
+          </div>
+          <div className="flex-shrink-0">
+            <WindowControls />
+          </div>
         </div>
 
         {/* Content: Two slots */}

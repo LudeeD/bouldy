@@ -34,7 +34,7 @@ export function useAutoSave({
     }
 
     // Set new timeout for auto-save
-    timeoutRef.current = setTimeout(async () => {
+    timeoutRef.current = window.setTimeout(async () => {
       try {
         // Add YAML frontmatter back
         const contentWithFrontmatter = `---\ntitle: ${title}\n---\n\n${markdown}`;
@@ -71,5 +71,9 @@ export function useAutoSave({
     }
   };
 
-  return { saveNow };
+  const setBaseline = (content: string) => {
+    lastSavedMarkdownRef.current = content;
+  };
+
+  return { saveNow, setBaseline };
 }

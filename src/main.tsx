@@ -4,7 +4,7 @@ import App from "./App";
 import { PostHogProvider } from "posthog-js/react";
 import { scan } from "react-scan";
 
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && import.meta.env.DEV) {
   scan({
     enabled: true,
   });
