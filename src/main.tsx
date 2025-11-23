@@ -4,11 +4,7 @@ import App from "./App";
 import { PostHogProvider } from "posthog-js/react";
 import { scan } from "react-scan";
 
-if (typeof window !== "undefined" && import.meta.env.DEV) {
-  scan({
-    enabled: true,
-  });
-}
+//scan({ enabled: import.meta.env.DEV });
 
 const options = {
   api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
