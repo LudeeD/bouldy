@@ -4,11 +4,55 @@ on:
   push:
     branches:
       - main
+      - dev
 
 jobs:
+  # Quick build check on dev branch
+  build-check:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-22.04
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: install dependencies (ubuntu only)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: install frontend dependencies
+        run: npm install
+
+      - name: run TypeScript check
+        run: npm run build
+        env:
+          VITE_PUBLIC_POSTHOG_KEY: ${{ secrets.VITE_PUBLIC_POSTHOG_KEY }}
+          VITE_PUBLIC_POSTHOG_HOST: ${{ secrets.VITE_PUBLIC_POSTHOG_HOST }}
+
+      - name: run Rust check
+        run: cargo check
+        working-directory: src-tauri
+
+  # Full publish on main branch - clean build, no caching
   publish-tauri:
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
+    environment: prod
     strategy:
       fail-fast: false
       matrix:
