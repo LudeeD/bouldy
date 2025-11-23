@@ -1,10 +1,4 @@
-export interface Theme {
-  name: string;
-  previewColors: {
-    bg: string;
-    primary: string;
-  };
-}
+import { Theme } from "../types";
 
 export const themes: Record<string, Theme> = {
   midnight: {

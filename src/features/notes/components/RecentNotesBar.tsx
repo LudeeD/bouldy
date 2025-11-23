@@ -1,4 +1,4 @@
-import { useNotes } from "../contexts/NotesContext";
+import { useNotes } from "../context/NotesContext";
 
 import { useState } from "react";
 import NewNoteDialog from "./NewNoteDialog";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Check, X, Scissors, Calendar } from "lucide-react";
-import { useTodos } from "../contexts/TodosContext";
+import { useTodos } from "../context/TodosContext";
 
 export default function TodoSpace() {
   const { todos, setTodos } = useTodos();

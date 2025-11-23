@@ -11,7 +11,7 @@ import {
   Quote,
 } from "lucide-react";
 
-import { mySchema } from "../utils/editorSchema";
+import { mySchema } from "../utils/schema";
 
 interface EditorToolbarProps {
   view: EditorView | null;

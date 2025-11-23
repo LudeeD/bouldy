@@ -1,5 +1,5 @@
 import { FolderOpen } from "lucide-react";
-import { themes } from "../themes";
+import { themes } from "../../../styles/themes";
 
 interface SettingsPanelProps {
   currentTheme: string;

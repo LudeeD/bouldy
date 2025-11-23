@@ -8,22 +8,8 @@ import {
   ReactNode,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { serializeTodos, parseTodos } from "../utils/todoTxtParser";
-
-interface Subtask {
-  id: string;
-  text: string;
-  completed: boolean;
-}
-
-interface TodoItem {
-  id: string;
-  text: string;
-  completed: boolean;
-  dueDate?: string;
-  subtasks: Subtask[];
-  isExpanded: boolean;
-}
+import { serializeTodos, parseTodos } from "../utils/todo-parser";
+import { TodoItem } from "../../../types";
 
 interface TodosContextType {
   todos: TodoItem[];

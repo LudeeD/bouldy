@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { EditorState } from "prosemirror-state";
-import { serializeToMarkdown } from "../utils/markdownSerializer";
+import { serializeToMarkdown } from "../utils/markdown-serializer";
 
 interface UseAutoSaveProps {
   editorState: EditorState | null;

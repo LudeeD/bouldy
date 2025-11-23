@@ -13,11 +13,11 @@ import {
   emDash,
   ellipsis,
 } from "prosemirror-inputrules";
-import { parseMarkdown, stripFrontmatter } from "../utils/markdownParser";
-import { useNotes } from "../contexts/NotesContext";
+import { parseMarkdown, stripFrontmatter } from "../utils/markdown-parser";
+import { useNotes } from "../../notes/context/NotesContext";
 import { useAutoSave } from "../hooks/useAutoSave";
 import EditorToolbar from "./EditorToolbar";
-import { mySchema } from "../utils/editorSchema";
+import { mySchema } from "../utils/schema";
 
 // Create markdown input rules
 function buildInputRules(schema: Schema) {
@@ -45,7 +45,7 @@ function buildInputRules(schema: Schema) {
   return inputRules({ rules });
 }
 
-import RecentNotesBar from "./RecentNotesBar";
+import RecentNotesBar from "../../notes/components/RecentNotesBar";
 
 // ... existing imports ...
 

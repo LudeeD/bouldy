@@ -1,25 +1,15 @@
-import "./App.css";
+import "./styles/App.css";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Store } from "@tauri-apps/plugin-store";
-import Editor from "./components/Editor";
-import VaultSelector from "./components/VaultSelector";
-import WindowControls from "./components/WindowControls";
-import Home from "./components/Home";
-import Sidebar from "./components/Sidebar";
-import TodoSpace from "./components/TodoSpace";
-import CalendarView from "./components/CalendarView";
-import { NotesProvider, useNotes } from "./contexts/NotesContext";
-import { TodosProvider, useTodos } from "./contexts/TodosContext";
-
-import SettingsPanel from "./components/SettingsPanel";
-
-type PanelType = "editor" | "todos" | "calendar" | "settings";
-
-interface PanelState {
-  left: PanelType | null;
-  right: PanelType | null;
-}
+import { Editor } from "./features/editor";
+import { VaultSelector } from "./features/vault";
+import { WindowControls, Home, Sidebar } from "./shared";
+import { TodoSpace, TodosProvider, useTodos } from "./features/todos";
+import { CalendarView } from "./features/calendar";
+import { NotesProvider, useNotes } from "./features/notes";
+import { SettingsPanel } from "./features/settings";
+import { PanelType, PanelState } from "./types";
 
 function AppContent({ onResetVault }: { onResetVault: () => void }) {
   const { loadNotes, vaultPath } = useNotes();

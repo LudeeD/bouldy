@@ -1,11 +1,5 @@
-export interface Note {
-  path: string;
-  name: string;
-  title: string;
-  modified: number;
-}
-
-export interface NoteMetadata {
-  title: string;
-  content: string;
-}
+// Re-export all types from a single location
+export * from './note';
+export * from './todo';
+export * from './panel';
+export * from './theme';

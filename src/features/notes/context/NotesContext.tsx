@@ -6,7 +6,7 @@ import {
   ReactNode,
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { Note, NoteMetadata } from "../types";
+import type { Note, NoteMetadata } from "../../../types";
 
 interface NotesContextType {
   notes: Note[];

@@ -1,7 +1,7 @@
 import { MarkdownParser } from "prosemirror-markdown";
 import { Plugin } from "prosemirror-state";
 import MarkdownIt from "markdown-it";
-import { mySchema } from "./editorSchema";
+import { mySchema } from "./schema";
 
 // Create a markdown parser that works with our schema
 export const markdownParser = new MarkdownParser(mySchema, new MarkdownIt(), {

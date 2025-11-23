@@ -3,7 +3,7 @@ import {
   CheckSquare,
   Calendar,
   Settings,
-  FolderOpen,
+  
   LayoutPanelLeft,
   LayoutPanelTop,
 } from "lucide-react";

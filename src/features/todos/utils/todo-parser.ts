@@ -1,17 +1,4 @@
-interface Subtask {
-  id: string;
-  text: string;
-  completed: boolean;
-}
-
-interface TodoItem {
-  id: string;
-  text: string;
-  completed: boolean;
-  dueDate?: string;
-  subtasks: Subtask[];
-  isExpanded: boolean;
-}
+import { Subtask, TodoItem } from "../../../types";
 
 /**
  * Serialize todos to todo.txt format
