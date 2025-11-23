@@ -1,5 +1,8 @@
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Download } from "lucide-react";
 import { themes } from "../../../styles/themes";
+import { useState } from "react";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 
 interface SettingsPanelProps {
   currentTheme: string;
@@ -14,6 +17,36 @@ export default function SettingsPanel({
   vaultPath,
   onChangeVault,
 }: SettingsPanelProps) {
+  const [updateStatus, setUpdateStatus] = useState<string>("");
+  const [isChecking, setIsChecking] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const checkForUpdates = async () => {
+    setIsChecking(true);
+    setUpdateStatus("Checking for updates...");
+
+    try {
+      const update = await check();
+
+      if (update?.available) {
+        setUpdateStatus(`Update available: v${update.version}`);
+        setIsDownloading(true);
+
+        await update.downloadAndInstall();
+
+        setUpdateStatus("Update downloaded! Restarting...");
+        await relaunch();
+      } else {
+        setUpdateStatus("You're running the latest version!");
+      }
+    } catch (error) {
+      setUpdateStatus(`Error: ${error}`);
+    } finally {
+      setIsChecking(false);
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-2xl mx-auto w-full">
       <h1 className="text-2xl font-bold mb-8 text-text">Settings</h1>
@@ -48,16 +81,16 @@ export default function SettingsPanel({
       </section>
 
       {/* Vault Section */}
-      <section>
+      <section className="mb-10">
         <h2 className="text-lg font-semibold mb-4 text-text">Vault</h2>
-        <div className="bg-bg rounded-lg border border-border p-6">
+        <div className="bg-bg border-2 border-border p-6">
           <div className="flex items-center gap-4 mb-4">
-            <div className="p-3 bg-highlight rounded-full text-primary">
+            <div className="p-3 bg-bg-light border-2 border-border text-primary">
               <FolderOpen size={24} />
             </div>
             <div className="flex-1 overflow-hidden">
               <div className="text-sm text-text-muted mb-1">Current Vault</div>
-              <div className="font-mono text-sm truncate text-text bg-bg-dark px-3 py-2 rounded border border-border">
+              <div className="font-mono text-sm truncate text-text bg-bg-dark px-3 py-2 border-2 border-border">
                 {vaultPath}
               </div>
             </div>
@@ -66,9 +99,43 @@ export default function SettingsPanel({
           <div className="flex justify-end">
             <button
               onClick={onChangeVault}
-              className="px-4 py-2 bg-bg-light border border-border-muted hover:bg-bg text-text rounded-md text-sm font-medium transition-colors"
+              className="px-4 py-2 bg-bg-light border-2 border-border hover:bg-highlight hover:text-primary text-text text-sm font-medium transition-colors"
             >
               Change Vault...
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Updates Section */}
+      <section>
+        <h2 className="text-lg font-semibold mb-4 text-text">Updates</h2>
+        <div className="bg-bg border-2 border-border p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 bg-bg-light border-2 border-border text-primary">
+              <Download size={24} />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm text-text-muted mb-1">
+                App Updates
+              </div>
+              <div className="text-sm text-text">
+                {updateStatus || "Check for the latest version"}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={checkForUpdates}
+              disabled={isChecking || isDownloading}
+              className="px-4 py-2 bg-primary text-bg-light border-2 border-primary hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-all"
+            >
+              {isChecking
+                ? "Checking..."
+                : isDownloading
+                  ? "Downloading..."
+                  : "Check for Updates"}
             </button>
           </div>
         </div>
