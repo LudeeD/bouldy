@@ -95,11 +95,36 @@ src-tauri/src/
 
 ## Development Workflow
 
+### React Performance & Architecture Principles
+
+**CRITICAL: Fix re-render issues with proper component isolation, NOT performance hacks**
+
+When a component re-renders on every keystroke or state change:
+1. **DO NOT** reach for `useMemo`, `useCallback`, or `React.memo` as the first solution
+2. **DO** identify what state is changing and extract it into a separate component
+3. **DO** isolate local UI state (like input values, editing flags) in the component that owns that UI
+4. **DO NOT** let parent components hold state that only affects child component UI
+
+**Example Pattern:**
+- ❌ WRONG: Parent component has `isEditing` and `inputValue` state, passes to child, uses `useMemo` everywhere
+- ✅ RIGHT: Child component owns `isEditing` and `inputValue`, parent only receives callback when done
+
+**Why this matters:**
+- Memoization is a band-aid that hides architectural problems
+- Proper component boundaries make the app naturally performant
+- Code is clearer when state lives close to where it's used
+- Re-renders only happen where they should
+
+**Communication patterns:**
+- Within a feature: Use direct props/callbacks (e.g., `onSelectNote={loadNote}`)
+- Across features: Use Tauri events or React Context
+- From Rust: Always use Tauri events
+
 ### When Adding Features
 1. Follow the feature-based module structure (create new folders under `src/features/`)
-2. Use React Context for state that needs to be shared across components
+2. Make each feature self-contained - load its own data from Tauri, manage own state
 3. Integrate with Tauri backend via `invoke()` commands for file system operations
-4. Keep components focused and composable
+4. Keep components focused and composable - isolate state to the smallest component that needs it
 5. Use Tailwind utilities for styling - avoid custom CSS unless necessary
 6. Consider Tauri capabilities for native features (file system, dialog, notifications, etc.)
 

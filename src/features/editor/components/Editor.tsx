@@ -1,128 +1,85 @@
-import { useRef, useState, useEffect, useMemo, useCallback } from "react";
-import {
-  MDXEditor,
-  headingsPlugin,
-  listsPlugin,
-  quotePlugin,
-  thematicBreakPlugin,
-  markdownShortcutPlugin,
-  linkPlugin,
-  linkDialogPlugin,
-  toolbarPlugin,
-  UndoRedo,
-  BoldItalicUnderlineToggles,
-  BlockTypeSelect,
-  CodeToggle,
-  CreateLink,
-  ListsToggle,
-  type MDXEditorMethods,
-} from "@mdxeditor/editor";
+import { useState, useRef } from "react";
 import "@mdxeditor/editor/style.css";
-import { useNotes } from "../../notes/context/NotesContext";
-import { useAutoSave } from "../hooks/useAutoSave";
-import RecentNotesBar from "../../notes/components/RecentNotesBar";
+import { invoke } from "@tauri-apps/api/core";
+import RecentNotesBar from "./RecentNotesBar";
 import EditorHeader from "./EditorHeader";
+import EditorContent, { type EditorContentHandle } from "./EditorContent";
+
+interface Note {
+  path: string;
+  name: string;
+  title: string;
+  modified: number;
+}
 
 export default function Editor() {
-  const editorRef = useRef<MDXEditorMethods>(null);
-  const [markdown, setMarkdown] = useState("");
-  const {
-    currentNote,
-    openNote,
-    saveCurrentNote,
-    setIsDirty,
-    isSaving,
-    isDirty,
-    updateNoteTitle,
-  } = useNotes();
+  const editorContentRef = useRef<EditorContentHandle>(null);
+  const [currentNote, setCurrentNote] = useState<Note | null>(null);
+  const [noteContent, setNoteContent] = useState<string>("");
+  const [isDirty, setIsDirty] = useState(false);
 
-  const { saveNow, setBaseline } = useAutoSave({
-    markdown,
-    onSave: saveCurrentNote,
-    enabled: currentNote !== null,
-    delay: 3000,
-    title: currentNote?.title || "Untitled",
-  });
+  const handleSave = async () => {
+    await editorContentRef.current?.save();
+  };
 
-  const handleManualSave = async () => {
-    if (isDirty && currentNote) {
-      await saveNow();
+  const loadNote = async (note: Note) => {
+    try {
+      const metadata = await invoke<{ title: string; content: string }>(
+        "read_note",
+        { path: note.path }
+      );
+
+      setCurrentNote(note);
+      setNoteContent(metadata.content);
+    } catch (error) {
+      console.error("Failed to load note:", error);
     }
   };
 
-  // Memoize plugins array to prevent recreation on every render
-  const plugins = useMemo(
-    () => [
-      headingsPlugin(),
-      listsPlugin(),
-      quotePlugin(),
-      thematicBreakPlugin(),
-      markdownShortcutPlugin(),
-      linkPlugin(),
-      linkDialogPlugin(),
-      toolbarPlugin({
-        toolbarContents: () => (
-          <>
-            <UndoRedo />
-            <BoldItalicUnderlineToggles />
-            <CodeToggle />
-            <BlockTypeSelect />
-            <CreateLink />
-            <ListsToggle />
-          </>
-        ),
-      }),
-    ],
-    [],
-  );
+  const handleRename = async (newTitle: string) => {
+    if (!currentNote) return;
 
-  // Load note content when currentNote PATH changes (not the object)
-  useEffect(() => {
-    if (!currentNote) {
-      editorRef.current?.setMarkdown("");
-      return;
+    try {
+      const vaultPath = await invoke<string | null>("get_vault_path");
+      if (!vaultPath) return;
+
+      const newFileName = `${newTitle}.md`;
+      const newPath = `${vaultPath}/notes/${newFileName}`;
+
+      // Read current content (no frontmatter to manipulate)
+      const metadata = await invoke<{ title: string; content: string }>(
+        "read_note",
+        { path: currentNote.path }
+      );
+
+      // Write to new path with same content
+      await invoke("write_note", {
+        path: newPath,
+        content: metadata.content,
+        title: newTitle,
+      });
+
+      // Delete old file
+      await invoke("delete_note", {
+        vaultPath,
+        path: currentNote.path,
+      });
+
+      // Update current note
+      setCurrentNote({
+        ...currentNote,
+        path: newPath,
+        title: newTitle,
+        name: newFileName,
+      });
+
+      // Update noteContent to match new path
+      setNoteContent(metadata.content);
+    } catch (error) {
+      console.error("Failed to rename note:", error);
+      throw error;
     }
-
-    const loadContent = async () => {
-      try {
-        const { invoke } = await import("@tauri-apps/api/core");
-        const metadata = await invoke<{ title: string; content: string }>(
-          "read_note",
-          {
-            path: currentNote.path,
-          },
-        );
-        // Strip YAML frontmatter
-        const cleanContent = metadata.content.replace(
-          /^---\n[\s\S]*?\n---\n/,
-          "",
-        );
-        // Use ref method to update editor content
-        editorRef.current?.setMarkdown(cleanContent);
-        // Update state for auto-save
-        setMarkdown(cleanContent);
-        setBaseline(cleanContent);
-      } catch (error) {
-        console.error("Failed to load note:", error);
-      }
-    };
-
-    loadContent();
-  }, [currentNote?.path]);
-
-  const handleSelectNote = async (path: string) => {
-    await openNote(path);
   };
-
-
-
-  const handleMarkdownChange = useCallback(
-    (newMarkdown: string) => {
-      setMarkdown(newMarkdown);
-      setIsDirty(true);
-    },
-    [setIsDirty],
-  );
 
   return (
     <div className="w-full h-full flex flex-col bg-bg-light border border-border-muted shadow-sm overflow-hidden relative z-10">
@@ -156,30 +113,21 @@ export default function Editor() {
           </div>
         ) : (
           <>
-            {/* Editor Surface */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <EditorHeader
-                title={currentNote.title}
-                isSaving={isSaving}
-                isDirty={isDirty}
-                onManualSave={handleManualSave}
-                onTitleChange={updateNoteTitle}
-                onDirty={() => setIsDirty(true)}
-              />
+            <EditorHeader
+              note={currentNote}
+              onRename={handleRename}
+              onSave={handleSave}
+              isDirty={isDirty}
+            />
 
-              {/* MDXEditor Content Area */}
-              <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                <MDXEditor
-                  key={currentNote?.path || "empty"}
-                  ref={editorRef}
-                  markdown=""
-                  onChange={handleMarkdownChange}
-                  contentEditableClassName="prose max-w-none prose-p:leading-relaxed prose-headings:leading-tight"
-                  plugins={plugins}
-                  className="mdxeditor-custom"
-                />
-              </div>
-            </div>
+            {/* MDXEditor Content Area */}
+            <EditorContent
+              ref={editorContentRef}
+              notePath={currentNote.path}
+              noteTitle={currentNote.title}
+              initialContent={noteContent}
+              onDirtyChange={setIsDirty}
+            />
           </>
         )}
       </div>
@@ -187,7 +135,7 @@ export default function Editor() {
       {/* Bottom Bar: Recent Notes */}
       <RecentNotesBar
         activePath={currentNote?.path}
-        onSelectNote={handleSelectNote}
+        onSelectNote={loadNote}
       />
     </div>
   );

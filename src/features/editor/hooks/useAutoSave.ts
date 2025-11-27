@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface UseAutoSaveProps {
   markdown: string;
@@ -17,14 +17,27 @@ export function useAutoSave({
 }: UseAutoSaveProps) {
   const timeoutRef = useRef<number>(0);
   const lastSavedMarkdownRef = useRef<string>("");
+  const onSaveRef = useRef(onSave);
+  const titleRef = useRef(title);
+  const [isDirty, setIsDirty] = useState(false);
+
+  // Update refs when callbacks/values change (doesn't trigger main effect)
+  useEffect(() => {
+    onSaveRef.current = onSave;
+    titleRef.current = title;
+  }, [onSave, title]);
 
   useEffect(() => {
     if (!enabled || !markdown) {
       return;
     }
 
+    // Check if content has changed
+    const hasChanged = lastSavedMarkdownRef.current !== markdown;
+    setIsDirty(hasChanged);
+
     // Skip if content hasn't changed
-    if (lastSavedMarkdownRef.current === markdown) {
+    if (!hasChanged) {
       return;
     }
 
@@ -36,10 +49,9 @@ export function useAutoSave({
     // Set new timeout for auto-save
     timeoutRef.current = window.setTimeout(async () => {
       try {
-        // Add YAML frontmatter back
-        const contentWithFrontmatter = `---\ntitle: ${title}\n---\n\n${markdown}`;
-        await onSave(contentWithFrontmatter, title);
+        await onSaveRef.current(markdown, titleRef.current);
         lastSavedMarkdownRef.current = markdown;
+        setIsDirty(false);
       } catch (error) {
         console.error("Auto-save failed:", error);
       }
@@ -51,7 +63,7 @@ export function useAutoSave({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [markdown, onSave, enabled, delay, title]);
+  }, [markdown, enabled, delay]);
 
   // Manual save function
   const saveNow = async () => {
@@ -62,10 +74,9 @@ export function useAutoSave({
     }
 
     try {
-      // Add YAML frontmatter back
-      const contentWithFrontmatter = `---\ntitle: ${title}\n---\n\n${markdown}`;
-      await onSave(contentWithFrontmatter, title);
+      await onSaveRef.current(markdown, titleRef.current);
       lastSavedMarkdownRef.current = markdown;
+      setIsDirty(false);
     } catch (error) {
       console.error("Manual save failed:", error);
     }
@@ -73,7 +84,8 @@ export function useAutoSave({
 
   const setBaseline = (content: string) => {
     lastSavedMarkdownRef.current = content;
+    setIsDirty(false);
   };
 
-  return { saveNow, setBaseline };
+  return { saveNow, setBaseline, isDirty };
 }

@@ -1,7 +1,11 @@
 use tauri_plugin_store::StoreExt;
 use std::path::{Path, PathBuf};
 use std::fs;
+use std::sync::Mutex;
 use serde::{Serialize, Deserialize};
+use tauri::{AppHandle, Emitter, Manager};
+
+mod watcher;
 
 #[derive(Serialize, Deserialize)]
 struct Note {
@@ -68,40 +72,12 @@ fn validate_path_in_vault(vault_path: &str, file_path: &str) -> Result<PathBuf, 
     Ok(file)
 }
 
-fn extract_title_from_markdown(content: &str) -> String {
-    // Try to extract from YAML frontmatter
-    if let Some(frontmatter_end) = content.find("---\n") {
-        if let Some(second_end) = content[frontmatter_end + 4..].find("---\n") {
-            let frontmatter = &content[frontmatter_end + 4..frontmatter_end + 4 + second_end];
-            if let Some(title_line) = frontmatter.lines().find(|l| l.starts_with("title:")) {
-                let title = title_line.trim_start_matches("title:")
-                    .trim()
-                    .trim_matches('"')
-                    .trim_matches('\'');
-                if !title.is_empty() {
-                    return title.to_string();
-                }
-            }
-        }
-    }
-
-    // Try to extract from first H1 heading
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with("# ") {
-            return trimmed[2..].trim().to_string();
-        }
-    }
-
-    // Fall back to first line
-    let first_line = content.lines().next().unwrap_or("").trim();
-    if first_line.len() > 50 {
-        format!("{}...", &first_line[..47])
-    } else if !first_line.is_empty() {
-        first_line.to_string()
-    } else {
-        "Untitled".to_string()
-    }
+fn extract_title_from_filename(path: &Path) -> String {
+    // Extract title from filename (without .md extension)
+    path.file_stem()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "Untitled".to_string())
 }
 
 #[tauri::command]
@@ -139,10 +115,7 @@ async fn list_vault_files(vault_path: String) -> Result<Vec<Note>, String> {
                 .unwrap()
                 .as_secs();
 
-            let content = fs::read_to_string(&path)
-                .unwrap_or_else(|_| String::new());
-
-            let title = extract_title_from_markdown(&content);
+            let title = extract_title_from_filename(&path);
 
             notes.push(Note {
                 path: path.to_string_lossy().to_string(),
@@ -164,13 +137,14 @@ async fn read_note(path: String) -> Result<NoteMetadata, String> {
     let content = fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read note: {}", e))?;
 
-    let title = extract_title_from_markdown(&content);
+    let path_obj = Path::new(&path);
+    let title = extract_title_from_filename(path_obj);
 
     Ok(NoteMetadata { title, content })
 }
 
 #[tauri::command]
-async fn write_note(path: String, content: String, title: String) -> Result<Note, String> {
+async fn write_note(app: AppHandle, path: String, content: String, title: String) -> Result<Note, String> {
     fs::write(&path, &content)
         .map_err(|e| format!("Failed to write note: {}", e))?;
 
@@ -185,21 +159,44 @@ async fn write_note(path: String, content: String, title: String) -> Result<Note
 
     let path_obj = Path::new(&path);
 
-    Ok(Note {
+    let note = Note {
         path: path.clone(),
         name: path_obj.file_name().unwrap().to_string_lossy().to_string(),
-        title,
+        title: title.clone(),
         modified,
-    })
+    };
+
+    // Emit event after successful save
+    let _ = app.emit("note:saved", watcher::NoteEventPayload {
+        path: path.clone(),
+        name: note.name.clone(),
+        title: Some(title),
+        modified: Some(modified),
+    });
+
+    Ok(note)
 }
 
 #[tauri::command]
-async fn delete_note(vault_path: String, path: String) -> Result<(), String> {
+async fn delete_note(app: AppHandle, vault_path: String, path: String) -> Result<(), String> {
     // Validate path is within vault
     validate_path_in_vault(&vault_path, &path)?;
 
+    let path_obj = Path::new(&path);
+    let name = path_obj.file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_default();
+
     fs::remove_file(&path)
         .map_err(|e| format!("Failed to delete note: {}", e))?;
+
+    // Emit event after successful deletion
+    let _ = app.emit("note:deleted", watcher::NoteEventPayload {
+        path: path.clone(),
+        name,
+        title: None,
+        modified: None,
+    });
 
     Ok(())
 }
@@ -258,6 +255,17 @@ async fn migrate_vault_structure(vault_path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn start_vault_watcher(app: AppHandle, vault_path: String) -> Result<(), String> {
+    // Set up file watcher
+    let debouncer = watcher::setup_watcher(app.clone(), vault_path)?;
+
+    // Store the debouncer in app state to keep it alive
+    app.manage(Mutex::new(Some(debouncer)));
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -277,7 +285,8 @@ pub fn run() {
             delete_note,
             read_todos,
             write_todos,
-            migrate_vault_structure
+            migrate_vault_structure,
+            start_vault_watcher
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

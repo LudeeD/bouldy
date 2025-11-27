@@ -7,12 +7,15 @@ import { VaultSelector } from "./features/vault";
 import { WindowControls, Home, Sidebar } from "./shared";
 import { TodoSpace, TodosProvider, useTodos } from "./features/todos";
 import { CalendarView } from "./features/calendar";
-import { NotesProvider, useNotes } from "./features/notes";
 import { SettingsPanel } from "./features/settings";
 import { PanelType, PanelState } from "./types";
 
-function AppContent({ onResetVault }: { onResetVault: () => void }) {
-  const { loadNotes, vaultPath } = useNotes();
+interface AppContentProps {
+  onResetVault: () => void;
+  vaultPath: string;
+}
+
+function AppContent({ onResetVault, vaultPath }: AppContentProps) {
   const { loadTodos } = useTodos();
   const [currentTheme, setCurrentTheme] = useState<string>("midnight");
   const [store, setStore] = useState<Store | null>(null);
@@ -68,10 +71,20 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
     return () => window.removeEventListener("resize", handleResize);
   }, [panels.left, panels.right]);
 
+  // Initialize vault watcher and load todos
   useEffect(() => {
-    loadNotes();
+    const initVault = async () => {
+      try {
+        // Start file watcher for notes
+        await invoke("start_vault_watcher", { vaultPath });
+      } catch (error) {
+        console.error("Failed to start vault watcher:", error);
+      }
+    };
+
+    initVault();
     loadTodos();
-  }, [loadNotes, loadTodos]);
+  }, [vaultPath, loadTodos]);
 
   const activatePanel = (type: PanelType, side?: "left" | "right") => {
     setPanels((prev) => {
@@ -135,20 +148,26 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
     setMruSide(side);
   };
 
-  // Track which panel types have been opened (to keep them mounted)
-  const [mountedPanels, setMountedPanels] = useState<Set<PanelType>>(
-    new Set(["editor", "todos"]),
-  );
 
-  // Update mounted panels whenever a panel is activated
-  useEffect(() => {
-    const newMounted = new Set(mountedPanels);
-    if (panels.left) newMounted.add(panels.left);
-    if (panels.right) newMounted.add(panels.right);
-    if (newMounted.size !== mountedPanels.size) {
-      setMountedPanels(newMounted);
+  const renderPanel = (type: PanelType) => {
+    switch (type) {
+      case "editor":
+        return <Editor />;
+      case "todos":
+        return <TodoSpace />;
+      case "calendar":
+        return <CalendarView />;
+      case "settings":
+        return (
+          <SettingsPanel
+            currentTheme={currentTheme}
+            onThemeChange={setCurrentTheme}
+            vaultPath={vaultPath}
+            onChangeVault={onResetVault}
+          />
+        );
     }
-  }, [panels.left, panels.right]);
+  };
 
   const renderSlot = (side: "left" | "right") => {
     const type = panels[side];
@@ -163,7 +182,7 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
         onFocus={() => handlePanelFocus(side)}
       >
         <div className="flex-1 overflow-auto p-4 relative group">
-          {/* Close button for the slot - optional but good for UX */}
+          {/* Close button for the slot */}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -188,56 +207,10 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
             </svg>
           </button>
 
-          {/* Render all mounted components but hide inactive ones */}
-          {mountedPanels.has("editor") && (
-            <div
-              className={
-                type === "editor"
-                  ? "w-full h-full"
-                  : "absolute top-0 left-0 w-full h-full opacity-0 pointer-events-none"
-              }
-            >
-              <Editor />
-            </div>
-          )}
-          {mountedPanels.has("todos") && (
-            <div
-              className={
-                type === "todos"
-                  ? "w-full h-full"
-                  : "absolute top-0 left-0 w-full h-full opacity-0 pointer-events-none"
-              }
-            >
-              <TodoSpace />
-            </div>
-          )}
-          {mountedPanels.has("calendar") && (
-            <div
-              className={
-                type === "calendar"
-                  ? "w-full h-full"
-                  : "absolute top-0 left-0 w-full h-full opacity-0 pointer-events-none"
-              }
-            >
-              <CalendarView />
-            </div>
-          )}
-          {mountedPanels.has("settings") && (
-            <div
-              className={
-                type === "settings"
-                  ? "w-full h-full"
-                  : "absolute top-0 left-0 w-full h-full opacity-0 pointer-events-none"
-              }
-            >
-              <SettingsPanel
-                currentTheme={currentTheme}
-                onThemeChange={setCurrentTheme}
-                vaultPath={vaultPath}
-                onChangeVault={onResetVault}
-              />
-            </div>
-          )}
+          {/* Render only the active panel for this slot */}
+          <div className="w-full h-full">
+            {renderPanel(type)}
+          </div>
         </div>
       </div>
     );
@@ -279,28 +252,26 @@ function AppContent({ onResetVault }: { onResetVault: () => void }) {
         <div className="flex-1 flex overflow-hidden bg-dots">
           {!panels.left && !panels.right && <Home />}
 
-          {/* On narrow screens, show only the MRU panel */}
-          {isNarrowScreen ? (
-            <>
-              {mruSide === "left" && panels.left && renderSlot("left")}
-              {mruSide === "right" && panels.right && renderSlot("right")}
-            </>
-          ) : (
-            <>
-              {/* Left panel with min-width */}
-              {panels.left && (
-                <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-                  {renderSlot("left")}
-                </div>
-              )}
+          {/* Left panel - always mounted, visibility controlled by CSS */}
+          {panels.left && (
+            <div
+              className={`flex-1 min-w-0 flex flex-col overflow-hidden ${
+                isNarrowScreen && mruSide !== "left" ? "hidden" : ""
+              }`}
+            >
+              {renderSlot("left")}
+            </div>
+          )}
 
-              {/* Right panel with min-width */}
-              {panels.right && (
-                <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-                  {renderSlot("right")}
-                </div>
-              )}
-            </>
+          {/* Right panel - always mounted, visibility controlled by CSS */}
+          {panels.right && (
+            <div
+              className={`flex-1 min-w-0 flex flex-col overflow-hidden ${
+                isNarrowScreen && mruSide !== "right" ? "hidden" : ""
+              }`}
+            >
+              {renderSlot("right")}
+            </div>
           )}
         </div>
       </div>
@@ -354,11 +325,9 @@ function App() {
   }
 
   return (
-    <NotesProvider vaultPath={vaultPath}>
-      <TodosProvider vaultPath={vaultPath}>
-        <AppContent onResetVault={() => setVaultPath(null)} />
-      </TodosProvider>
-    </NotesProvider>
+    <TodosProvider vaultPath={vaultPath}>
+      <AppContent onResetVault={() => setVaultPath(null)} vaultPath={vaultPath} />
+    </TodosProvider>
   );
 }
 
