@@ -61,7 +61,7 @@ export default function EditorHeader({ note, onRename, onSave, isDirty }: Editor
   };
 
   return (
-    <div className="h-20 flex items-center justify-between px-4 py-2.5 border-b-2 border-border bg-bg-light">
+    <div className="h-12 flex items-center justify-between px-3 py-1.5 border-b border-border bg-bg-light">
       {isEditingTitle ? (
         <input
           ref={titleInputRef}
@@ -70,12 +70,12 @@ export default function EditorHeader({ note, onRename, onSave, isDirty }: Editor
           onChange={(e) => setTitleValue(e.target.value)}
           onBlur={handleTitleBlur}
           onKeyDown={handleTitleKeyDown}
-          className="text-2xl font-normal text-text tracking-tight bg-transparent border-none outline-none focus:outline-none min-w-0 flex-1"
+          className="text-sm font-medium text-text bg-transparent border-none outline-none focus:outline-none min-w-0 flex-1"
           autoFocus
         />
       ) : (
         <h1
-          className="text-2xl font-normal text-text tracking-tight truncate cursor-text hover:text-primary transition-colors"
+          className="text-sm font-medium text-text truncate cursor-text hover:text-primary transition-colors"
           onClick={handleTitleClick}
           title="Click to edit title"
         >
@@ -87,11 +87,11 @@ export default function EditorHeader({ note, onRename, onSave, isDirty }: Editor
         <button
           onClick={handleSaveClick}
           disabled={isSaving}
-          className="flex items-center gap-2 px-4 py-2 border-2 border-border bg-bg hover:bg-primary hover:text-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-2.5 py-1 border border-border text-xs bg-bg hover:bg-primary hover:text-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           title="Save note (Cmd/Ctrl+S)"
         >
-          <Save className="w-4 h-4" />
-          <span className="text-sm font-medium">{isSaving ? "Saving..." : "Save"}</span>
+          <Save className="w-3 h-3" />
+          <span className="font-medium">{isSaving ? "Saving..." : "Save"}</span>
         </button>
       )}
     </div>

@@ -3,13 +3,13 @@ import {
   CheckSquare,
   Calendar,
   Settings,
-  
+  MessageSquare,
   LayoutPanelLeft,
   LayoutPanelTop,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
-type PanelType = "editor" | "todos" | "calendar" | "settings";
+type PanelType = "editor" | "todos" | "calendar" | "settings" | "prompts";
 
 interface SidebarProps {
   activePanels: {
@@ -73,7 +73,7 @@ function SidebarButton({
 
   return (
     <div
-      className="relative w-12 h-12 flex items-center justify-center"
+      className="relative w-10 h-10 flex items-center justify-center"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -116,7 +116,7 @@ function SidebarButton({
           }`}
           title="Open on Left"
         >
-          <LayoutPanelLeft size={16} />
+          <LayoutPanelLeft size={14} />
         </button>
 
         {/* Right Button */}
@@ -132,7 +132,7 @@ function SidebarButton({
           }`}
           title="Open on Right"
         >
-          <LayoutPanelTop size={16} className="rotate-90" />
+          <LayoutPanelTop size={14} className="rotate-90" />
         </button>
       </div>
     </div>
@@ -153,11 +153,11 @@ export default function Sidebar({
   };
 
   return (
-    <div className="w-16 bg-bg-dark flex flex-col items-center py-4 border-r border-border z-20">
+    <div className="w-12 bg-bg-dark flex flex-col items-center py-3 border-r border-border z-20">
       {/* Icon buttons */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
         <SidebarButton
-          icon={<FileText size={20} />}
+          icon={<FileText size={16} />}
           label="Editor"
           activeSide={getActiveSide("editor")}
           onClick={() => onOpenPanel("editor")}
@@ -167,7 +167,7 @@ export default function Sidebar({
         />
 
         <SidebarButton
-          icon={<CheckSquare size={20} />}
+          icon={<CheckSquare size={16} />}
           label="Todos"
           activeSide={getActiveSide("todos")}
           onClick={() => onOpenPanel("todos")}
@@ -177,12 +177,22 @@ export default function Sidebar({
         />
 
         <SidebarButton
-          icon={<Calendar size={20} />}
+          icon={<Calendar size={16} />}
           label="Calendar"
           activeSide={getActiveSide("calendar")}
           onClick={() => onOpenPanel("calendar")}
           onOpenLeft={() => onOpenPanel("calendar", "left")}
           onOpenRight={() => onOpenPanel("calendar", "right")}
+          disableSplitView={disableSplitView}
+        />
+
+        <SidebarButton
+          icon={<MessageSquare size={16} />}
+          label="Prompts"
+          activeSide={getActiveSide("prompts")}
+          onClick={() => onOpenPanel("prompts")}
+          onOpenLeft={() => onOpenPanel("prompts", "left")}
+          onOpenRight={() => onOpenPanel("prompts", "right")}
           disableSplitView={disableSplitView}
         />
       </div>
@@ -191,9 +201,9 @@ export default function Sidebar({
       <div className="flex-1" />
 
       {/* Settings Button - Now a Panel */}
-      <div className="mb-4">
+      <div className="mb-2">
         <SidebarButton
-          icon={<Settings size={20} />}
+          icon={<Settings size={16} />}
           label="Settings"
           activeSide={getActiveSide("settings")}
           onClick={() => onOpenPanel("settings")}
@@ -203,7 +213,7 @@ export default function Sidebar({
         />
       </div>
 
-      <div className="writing-mode-vertical text-text-muted font-medium text-sm tracking-wider">
+      <div className="writing-mode-vertical text-text-muted font-medium text-xs tracking-wider">
         <span className="rotate-180 inline-block">Bouldy</span>
       </div>
     </div>

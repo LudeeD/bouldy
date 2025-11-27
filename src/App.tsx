@@ -8,6 +8,7 @@ import { WindowControls, Home, Sidebar } from "./shared";
 import { TodoSpace, TodosProvider, useTodos } from "./features/todos";
 import { CalendarView } from "./features/calendar";
 import { SettingsPanel } from "./features/settings";
+import { PromptsPanel, PromptsProvider } from "./features/prompts";
 import { PanelType, PanelState } from "./types";
 
 interface AppContentProps {
@@ -166,6 +167,8 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
             onChangeVault={onResetVault}
           />
         );
+      case "prompts":
+        return <PromptsPanel />;
     }
   };
 
@@ -181,20 +184,20 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
         onClick={() => handlePanelFocus(side)}
         onFocus={() => handlePanelFocus(side)}
       >
-        <div className="flex-1 overflow-auto p-4 relative group">
+        <div className="flex-1 overflow-auto p-2 relative group">
           {/* Close button for the slot */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               closePanel(side);
             }}
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 bg-bg-light rounded-full hover:bg-danger hover:text-white transition-all z-20 flex items-center justify-center"
+            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-0.5 bg-bg-light hover:bg-danger hover:text-white transition-all z-20 flex items-center justify-center"
             title="Close Panel"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
+              width="12"
+              height="12"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -326,7 +329,9 @@ function App() {
 
   return (
     <TodosProvider vaultPath={vaultPath}>
-      <AppContent onResetVault={() => setVaultPath(null)} vaultPath={vaultPath} />
+      <PromptsProvider vaultPath={vaultPath}>
+        <AppContent onResetVault={() => setVaultPath(null)} vaultPath={vaultPath} />
+      </PromptsProvider>
     </TodosProvider>
   );
 }

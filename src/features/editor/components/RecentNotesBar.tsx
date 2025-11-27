@@ -152,17 +152,17 @@ const RecentNotesBar = memo(function RecentNotesBar({
   };
 
   return (
-    <div className="h-15 w-full border-t-2 border-border flex items-center px-4 py-2.5">
+    <div className="h-10 w-full border-t border-border flex items-center px-2 py-1">
       <button
         onClick={handleCreateNewNote}
-        className="flex items-center gap-2 px-3 py-2 bg-primary text-bg-light hover:opacity-90 transition-opacity text-sm font-medium"
+        className="flex items-center gap-1.5 px-2 py-1 bg-primary text-bg-light hover:opacity-90 transition-opacity text-xs font-medium"
         title="New Note"
       >
-        <Plus size={18} />
+        <Plus size={14} />
         <span>New</span>
       </button>
 
-      <div className="h-6 w-px bg-border mx-3" />
+      <div className="h-4 w-px bg-border mx-2" />
 
       <div
         ref={containerRef}
@@ -187,9 +187,9 @@ const RecentNotesBar = memo(function RecentNotesBar({
               data-path={note.path}
               onClick={() => onSelectNote(note)}
               style={{ zIndex: 1, position: 'relative' }}
-              className={`flex items-center px-3 py-2 text-sm whitespace-nowrap transition-all duration-200 max-w-[200px] ${
+              className={`flex items-center px-2 py-1 text-xs whitespace-nowrap transition-all duration-200 max-w-[180px] ${
                 activePath === note.path
-                  ? "text-primary"
+                  ? "text-primary font-medium"
                   : "text-text-muted hover:text-text hover:bg-primary/10"
               }`}
               title={note.title}

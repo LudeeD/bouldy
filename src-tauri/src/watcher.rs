@@ -70,14 +70,23 @@ fn emit_note_list_updated(app: &AppHandle, notes_dir: &Path) {
 }
 
 pub fn setup_watcher(app: AppHandle, vault_path: String) -> Result<Debouncer<impl Watcher, NoCache>, String> {
-    let notes_dir = PathBuf::from(&vault_path).join("notes");
+    let vault = PathBuf::from(&vault_path);
+    let notes_dir = vault.join("notes");
+    let prompts_dir = vault.join("prompts");
 
     if !notes_dir.exists() {
         return Err("Notes directory does not exist".to_string());
     }
 
+    // Create prompts directory if it doesn't exist
+    if !prompts_dir.exists() {
+        fs::create_dir(&prompts_dir)
+            .map_err(|e| format!("Failed to create prompts directory: {}", e))?;
+    }
+
     let app_clone = Arc::new(app);
     let notes_dir_clone = notes_dir.clone();
+    let prompts_dir_clone = prompts_dir.clone();
 
     let mut debouncer = new_debouncer(
         Duration::from_millis(500),
@@ -85,52 +94,56 @@ pub fn setup_watcher(app: AppHandle, vault_path: String) -> Result<Debouncer<imp
         move |result: DebounceEventResult| {
             match result {
                 Ok(events) => {
-                    let mut should_update_list = false;
+                    let mut should_update_note_list = false;
 
                     for event in events {
                         for path in &event.paths {
-                            // Only process .md files in the notes directory
+                            // Only process .md files
                             if path.extension().and_then(|s| s.to_str()) != Some("md") {
                                 continue;
                             }
 
-                            if !path.starts_with(&notes_dir_clone) {
-                                continue;
+                            // Check if this is a notes file
+                            if path.starts_with(&notes_dir_clone) {
+                                match event.kind {
+                                    notify::EventKind::Create(_) => {
+                                        if let Some(payload) = get_note_metadata(path) {
+                                            let _ = app_clone.emit("note:created", payload);
+                                            should_update_note_list = true;
+                                        }
+                                    }
+                                    notify::EventKind::Modify(_) => {
+                                        if let Some(payload) = get_note_metadata(path) {
+                                            let _ = app_clone.emit("note:updated", payload);
+                                            should_update_note_list = true;
+                                        }
+                                    }
+                                    notify::EventKind::Remove(_) => {
+                                        let payload = NoteEventPayload {
+                                            path: path.to_string_lossy().to_string(),
+                                            name: path.file_name()
+                                                .unwrap_or_default()
+                                                .to_string_lossy()
+                                                .to_string(),
+                                            title: None,
+                                            modified: None,
+                                        };
+                                        let _ = app_clone.emit("note:deleted", payload);
+                                        should_update_note_list = true;
+                                    }
+                                    _ => {}
+                                }
                             }
-
-                            match event.kind {
-                                notify::EventKind::Create(_) => {
-                                    if let Some(payload) = get_note_metadata(path) {
-                                        let _ = app_clone.emit("note:created", payload);
-                                        should_update_list = true;
-                                    }
-                                }
-                                notify::EventKind::Modify(_) => {
-                                    if let Some(payload) = get_note_metadata(path) {
-                                        let _ = app_clone.emit("note:updated", payload);
-                                        should_update_list = true;
-                                    }
-                                }
-                                notify::EventKind::Remove(_) => {
-                                    let payload = NoteEventPayload {
-                                        path: path.to_string_lossy().to_string(),
-                                        name: path.file_name()
-                                            .unwrap_or_default()
-                                            .to_string_lossy()
-                                            .to_string(),
-                                        title: None,
-                                        modified: None,
-                                    };
-                                    let _ = app_clone.emit("note:deleted", payload);
-                                    should_update_list = true;
-                                }
-                                _ => {}
+                            // Check if this is a prompts file
+                            else if path.starts_with(&prompts_dir_clone) {
+                                // Prompts are handled by write_prompt, delete_prompt commands
+                                // which already emit events, so we don't need to emit here
                             }
                         }
                     }
 
                     // Emit full list update if any changes occurred
-                    if should_update_list {
+                    if should_update_note_list {
                         emit_note_list_updated(&app_clone, &notes_dir_clone);
                     }
                 }
@@ -143,8 +156,11 @@ pub fn setup_watcher(app: AppHandle, vault_path: String) -> Result<Debouncer<imp
         },
     ).map_err(|e| format!("Failed to create debouncer: {}", e))?;
 
+    // Watch both directories
     debouncer.watch(&notes_dir, RecursiveMode::NonRecursive)
-        .map_err(|e| format!("Failed to watch directory: {}", e))?;
+        .map_err(|e| format!("Failed to watch notes directory: {}", e))?;
+    debouncer.watch(&prompts_dir, RecursiveMode::NonRecursive)
+        .map_err(|e| format!("Failed to watch prompts directory: {}", e))?;
 
     Ok(debouncer)
 }

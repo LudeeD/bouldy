@@ -21,6 +21,34 @@ struct NoteMetadata {
     content: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+struct Prompt {
+    id: String,
+    title: String,
+    content: String,
+    tags: Vec<String>,
+    category: Option<String>,
+    variables: Vec<String>,
+    last_used: Option<u64>,
+    use_count: u64,
+    created: u64,
+    modified: u64,
+    path: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct PromptMetadata {
+    title: String,
+    content: String,
+    tags: Vec<String>,
+    category: Option<String>,
+    variables: Vec<String>,
+    #[serde(rename = "lastUsed")]
+    last_used: Option<u64>,
+    #[serde(rename = "useCount")]
+    use_count: u64,
+}
+
 #[tauri::command]
 async fn select_vault_folder(app: tauri::AppHandle) -> Result<String, String> {
     use tauri_plugin_dialog::DialogExt;
@@ -266,6 +294,217 @@ async fn start_vault_watcher(app: AppHandle, vault_path: String) -> Result<(), S
     Ok(())
 }
 
+// Prompt helper functions
+fn parse_prompt_frontmatter(content: &str) -> Result<(PromptMetadata, String), String> {
+    // Split frontmatter from content
+    let parts: Vec<&str> = content.splitn(3, "---").collect();
+
+    if parts.len() < 3 || !parts[0].trim().is_empty() {
+        // No valid frontmatter, return defaults
+        return Ok((
+            PromptMetadata {
+                title: "Untitled".to_string(),
+                content: content.to_string(),
+                tags: vec![],
+                category: None,
+                variables: vec![],
+                last_used: None,
+                use_count: 0,
+            },
+            content.to_string(),
+        ));
+    }
+
+    let frontmatter = parts[1].trim();
+    let body = parts[2].trim();
+
+    let metadata: PromptMetadata = serde_yaml::from_str(frontmatter)
+        .map_err(|e| format!("Failed to parse frontmatter: {}", e))?;
+
+    Ok((metadata, body.to_string()))
+}
+
+fn serialize_prompt(metadata: &PromptMetadata) -> Result<String, String> {
+    let frontmatter = serde_yaml::to_string(metadata)
+        .map_err(|e| format!("Failed to serialize frontmatter: {}", e))?;
+
+    Ok(format!("---\n{}---\n\n{}", frontmatter, metadata.content))
+}
+
+fn extract_prompt_metadata(path: &Path) -> Result<Prompt, String> {
+    let content = fs::read_to_string(path)
+        .map_err(|e| format!("Failed to read prompt: {}", e))?;
+
+    let (mut metadata, body) = parse_prompt_frontmatter(&content)?;
+    metadata.content = body;
+
+    let file_metadata = fs::metadata(path)
+        .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+
+    let modified = file_metadata.modified()
+        .map_err(|e| format!("Failed to get modified time: {}", e))?
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    let created = file_metadata.created()
+        .unwrap_or_else(|_| file_metadata.modified().unwrap())
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    let id = path.file_stem()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| "untitled".to_string());
+
+    Ok(Prompt {
+        id,
+        title: metadata.title,
+        content: metadata.content,
+        tags: metadata.tags,
+        category: metadata.category,
+        variables: metadata.variables,
+        last_used: metadata.last_used,
+        use_count: metadata.use_count,
+        created,
+        modified,
+        path: path.to_string_lossy().to_string(),
+    })
+}
+
+#[tauri::command]
+async fn list_prompts(vault_path: String) -> Result<Vec<Prompt>, String> {
+    let vault = Path::new(&vault_path);
+    let prompts_dir = vault.join("prompts");
+
+    // Create prompts directory if it doesn't exist
+    if !prompts_dir.exists() {
+        fs::create_dir(&prompts_dir)
+            .map_err(|e| format!("Failed to create prompts directory: {}", e))?;
+        return Ok(vec![]);
+    }
+
+    let mut prompts = Vec::new();
+
+    let entries = fs::read_dir(&prompts_dir)
+        .map_err(|e| format!("Failed to read prompts directory: {}", e))?;
+
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let path = entry.path();
+
+        if path.extension().and_then(|s| s.to_str()) == Some("md") {
+            match extract_prompt_metadata(&path) {
+                Ok(prompt) => prompts.push(prompt),
+                Err(e) => eprintln!("Failed to parse prompt {}: {}", path.display(), e),
+            }
+        }
+    }
+
+    // Sort by lastUsed (recent first), then by title
+    prompts.sort_by(|a, b| {
+        match (a.last_used, b.last_used) {
+            (Some(a_used), Some(b_used)) => b_used.cmp(&a_used),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => a.title.cmp(&b.title),
+        }
+    });
+
+    Ok(prompts)
+}
+
+#[tauri::command]
+async fn read_prompt(path: String) -> Result<PromptMetadata, String> {
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read prompt: {}", e))?;
+
+    let (metadata, _body) = parse_prompt_frontmatter(&content)?;
+
+    Ok(metadata)
+}
+
+#[tauri::command]
+async fn write_prompt(app: AppHandle, vault_path: String, id: String, metadata: PromptMetadata) -> Result<Prompt, String> {
+    let vault = Path::new(&vault_path);
+    let prompts_dir = vault.join("prompts");
+
+    // Create prompts directory if it doesn't exist
+    if !prompts_dir.exists() {
+        fs::create_dir(&prompts_dir)
+            .map_err(|e| format!("Failed to create prompts directory: {}", e))?;
+    }
+
+    let file_path = prompts_dir.join(format!("{}.md", id));
+    let serialized = serialize_prompt(&metadata)?;
+
+    fs::write(&file_path, serialized)
+        .map_err(|e| format!("Failed to write prompt: {}", e))?;
+
+    let prompt = extract_prompt_metadata(&file_path)?;
+
+    // Emit event after successful save
+    let _ = app.emit("prompt:saved", prompt.clone());
+
+    Ok(prompt)
+}
+
+#[tauri::command]
+async fn delete_prompt(app: AppHandle, path: String) -> Result<(), String> {
+    let path_obj = Path::new(&path);
+    let id = path_obj.file_stem()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_string())
+        .unwrap_or_default();
+
+    fs::remove_file(&path)
+        .map_err(|e| format!("Failed to delete prompt: {}", e))?;
+
+    // Emit event after successful deletion
+    #[derive(Clone, Serialize)]
+    struct PromptDeletedPayload {
+        path: String,
+        id: String,
+    }
+
+    let _ = app.emit("prompt:deleted", PromptDeletedPayload {
+        path: path.clone(),
+        id,
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn track_prompt_usage(_app: AppHandle, vault_path: String, id: String) -> Result<(), String> {
+    let vault = Path::new(&vault_path);
+    let prompts_dir = vault.join("prompts");
+    let file_path = prompts_dir.join(format!("{}.md", id));
+
+    // Read current prompt
+    let content = fs::read_to_string(&file_path)
+        .map_err(|e| format!("Failed to read prompt: {}", e))?;
+
+    let (mut metadata, _body) = parse_prompt_frontmatter(&content)?;
+
+    // Update usage tracking
+    metadata.use_count += 1;
+    metadata.last_used = Some(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    );
+
+    // Write back
+    let serialized = serialize_prompt(&metadata)?;
+    fs::write(&file_path, serialized)
+        .map_err(|e| format!("Failed to write prompt: {}", e))?;
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -286,7 +525,12 @@ pub fn run() {
             read_todos,
             write_todos,
             migrate_vault_structure,
-            start_vault_watcher
+            start_vault_watcher,
+            list_prompts,
+            read_prompt,
+            write_prompt,
+            delete_prompt,
+            track_prompt_usage
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -139,18 +139,18 @@ export default function TodoSpace() {
   return (
     <div className="w-full h-full flex flex-col bg-bg-light border border-border-muted shadow-sm overflow-hidden relative z-10">
       {/* Header */}
-      <div className="h-20 flex items-center justify-between px-4 py-2.5 border-b-2 border-border bg-bg-light">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <h1 className="text-2xl font-normal text-text tracking-tight">
+      <div className="h-12 flex items-center justify-between px-3 py-1.5 border-b border-border bg-bg-light">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <h1 className="text-sm font-medium text-text">
             Tasks
           </h1>
         </div>
 
-        <div className="flex-shrink-0 ml-6">
-          <div className="flex items-center gap-0.5 bg-bg p-1 rounded-lg inline-flex border border-border-muted">
+        <div className="flex-shrink-0">
+          <div className="flex items-center gap-0.5 bg-bg p-0.5 inline-flex border border-border-muted">
             <button
               onClick={() => setActiveTab("today")}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${activeTab === "today"
+              className={`px-2 py-0.5 text-xs font-medium transition-all duration-200 ${activeTab === "today"
                 ? "bg-highlight text-primary"
                 : "text-text-muted hover:bg-highlight hover:text-primary"
                 }`}
@@ -159,7 +159,7 @@ export default function TodoSpace() {
             </button>
             <button
               onClick={() => setActiveTab("upcoming")}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${activeTab === "upcoming"
+              className={`px-2 py-0.5 text-xs font-medium transition-all duration-200 ${activeTab === "upcoming"
                 ? "bg-highlight text-primary"
                 : "text-text-muted hover:bg-highlight hover:text-primary"
                 }`}
