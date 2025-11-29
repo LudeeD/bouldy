@@ -18,8 +18,13 @@ interface PromptsContextType {
   error: string | null;
   loadPrompts: () => Promise<void>;
   selectPrompt: (id: string) => void;
-  createPrompt: (metadata: Omit<PromptMetadata, "useCount" | "lastUsed">) => Promise<Prompt>;
-  updatePrompt: (id: string, metadata: Omit<PromptMetadata, "useCount" | "lastUsed">) => Promise<Prompt>;
+  createPrompt: (
+    metadata: Omit<PromptMetadata, "useCount" | "lastUsed">,
+  ) => Promise<Prompt>;
+  updatePrompt: (
+    id: string,
+    metadata: Omit<PromptMetadata, "useCount" | "lastUsed">,
+  ) => Promise<Prompt>;
   deletePrompt: (id: string, path: string) => Promise<void>;
   trackUsage: (id: string) => Promise<void>;
   clearError: () => void;
@@ -55,75 +60,84 @@ export function PromptsProvider({ children, vaultPath }: PromptsProviderProps) {
     }
   }, [vaultPath]);
 
-  const selectPrompt = useCallback((id: string) => {
-    setSelectedPrompt((prev) => {
-      const prompt = prompts.find((p) => p.id === id);
-      return prompt || prev;
-    });
-  }, [prompts]);
-
-  const createPrompt = useCallback(async (
-    metadata: Omit<PromptMetadata, "useCount" | "lastUsed">
-  ): Promise<Prompt> => {
-    if (!vaultPath) throw new Error("No vault selected");
-
-    const id = Date.now().toString();
-    const variables = extractVariables(metadata.content);
-
-    const fullMetadata: PromptMetadata = {
-      ...metadata,
-      variables,
-      useCount: 0,
-      lastUsed: undefined,
-    };
-
-    try {
-      const prompt = await invoke<Prompt>("write_prompt", {
-        vaultPath,
-        id,
-        metadata: fullMetadata,
+  const selectPrompt = useCallback(
+    (id: string) => {
+      setSelectedPrompt((prev) => {
+        const prompt = prompts.find((p) => p.id === id);
+        return prompt || prev;
       });
+    },
+    [prompts],
+  );
 
-      return prompt;
-    } catch (err) {
-      console.error("Failed to create prompt:", err);
-      setError(err instanceof Error ? err.message : String(err));
-      throw err;
-    }
-  }, [vaultPath]);
+  const createPrompt = useCallback(
+    async (
+      metadata: Omit<PromptMetadata, "useCount" | "lastUsed">,
+    ): Promise<Prompt> => {
+      if (!vaultPath) throw new Error("No vault selected");
 
-  const updatePrompt = useCallback(async (
-    id: string,
-    metadata: Omit<PromptMetadata, "useCount" | "lastUsed">
-  ): Promise<Prompt> => {
-    if (!vaultPath) throw new Error("No vault selected");
+      const id = Date.now().toString();
+      const variables = extractVariables(metadata.content);
 
-    const existingPrompt = prompts.find((p) => p.id === id);
-    if (!existingPrompt) throw new Error("Prompt not found");
+      const fullMetadata: PromptMetadata = {
+        ...metadata,
+        variables,
+        useCount: 0,
+        lastUsed: undefined,
+      };
 
-    const variables = extractVariables(metadata.content);
+      try {
+        const prompt = await invoke<Prompt>("write_prompt", {
+          vaultPath,
+          id,
+          metadata: fullMetadata,
+        });
 
-    const fullMetadata: PromptMetadata = {
-      ...metadata,
-      variables,
-      useCount: existingPrompt.useCount,
-      lastUsed: existingPrompt.lastUsed,
-    };
+        return prompt;
+      } catch (err) {
+        console.error("Failed to create prompt:", err);
+        setError(err instanceof Error ? err.message : String(err));
+        throw err;
+      }
+    },
+    [vaultPath],
+  );
 
-    try {
-      const prompt = await invoke<Prompt>("write_prompt", {
-        vaultPath,
-        id,
-        metadata: fullMetadata,
-      });
+  const updatePrompt = useCallback(
+    async (
+      id: string,
+      metadata: Omit<PromptMetadata, "useCount" | "lastUsed">,
+    ): Promise<Prompt> => {
+      if (!vaultPath) throw new Error("No vault selected");
 
-      return prompt;
-    } catch (err) {
-      console.error("Failed to update prompt:", err);
-      setError(err instanceof Error ? err.message : String(err));
-      throw err;
-    }
-  }, [vaultPath, prompts]);
+      const existingPrompt = prompts.find((p) => p.id === id);
+      if (!existingPrompt) throw new Error("Prompt not found");
+
+      const variables = extractVariables(metadata.content);
+
+      const fullMetadata: PromptMetadata = {
+        ...metadata,
+        variables,
+        useCount: existingPrompt.useCount,
+        lastUsed: existingPrompt.lastUsed,
+      };
+
+      try {
+        const prompt = await invoke<Prompt>("write_prompt", {
+          vaultPath,
+          id,
+          metadata: fullMetadata,
+        });
+
+        return prompt;
+      } catch (err) {
+        console.error("Failed to update prompt:", err);
+        setError(err instanceof Error ? err.message : String(err));
+        throw err;
+      }
+    },
+    [vaultPath, prompts],
+  );
 
   const deletePrompt = useCallback(async (_id: string, path: string) => {
     try {
@@ -135,15 +149,18 @@ export function PromptsProvider({ children, vaultPath }: PromptsProviderProps) {
     }
   }, []);
 
-  const trackUsage = useCallback(async (id: string) => {
-    if (!vaultPath) return;
+  const trackUsage = useCallback(
+    async (id: string) => {
+      if (!vaultPath) return;
 
-    try {
-      await invoke("track_prompt_usage", { vaultPath, id });
-    } catch (err) {
-      console.error("Failed to track usage:", err);
-    }
-  }, [vaultPath]);
+      try {
+        await invoke("track_prompt_usage", { vaultPath, id });
+      } catch (err) {
+        console.error("Failed to track usage:", err);
+      }
+    },
+    [vaultPath],
+  );
 
   const clearError = useCallback(() => {
     setError(null);
@@ -172,7 +189,7 @@ export function PromptsProvider({ children, vaultPath }: PromptsProviderProps) {
         if (selectedPrompt?.id === savedPrompt.id) {
           setSelectedPrompt(savedPrompt);
         }
-      })
+      }),
     );
 
     unlistenPromises.push(
@@ -183,7 +200,7 @@ export function PromptsProvider({ children, vaultPath }: PromptsProviderProps) {
         if (selectedPrompt?.id === deletedId) {
           setSelectedPrompt(null);
         }
-      })
+      }),
     );
 
     const cleanup = async () => {

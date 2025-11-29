@@ -95,6 +95,23 @@
   --info: oklch(0.7 0.12 260);
 }
 
+[data-theme="clean"] {
+  --bg-dark: oklch(0.98 0 0);
+  --bg: oklch(1 0 0);
+  --bg-light: oklch(0.99 0 0);
+  --text: oklch(0.2 0.015 252);
+  --text-muted: oklch(0.45 0.015 252);
+  --highlight: oklch(0.96 0.005 252);
+  --border: oklch(0.88 0.005 252);
+  --border-muted: oklch(0.94 0.003 252);
+  --primary: oklch(0.2 0.015 252);
+  --secondary: oklch(0.35 0.02 252);
+  --danger: oklch(0.55 0.22 25);
+  --warning: oklch(0.65 0.15 85);
+  --success: oklch(0.5 0.15 145);
+  --info: oklch(0.5 0.15 240);
+}
+
 /* Custom prose theme using our design system */
 .prose,
 .mdxeditor-custom .prose {

@@ -55,7 +55,9 @@ export default function PromptsPanel() {
       }
 
       if (selectedTags.length > 0) {
-        const hasAllTags = selectedTags.every((tag) => prompt.tags.includes(tag));
+        const hasAllTags = selectedTags.every((tag) =>
+          prompt.tags.includes(tag),
+        );
         if (!hasAllTags) return false;
       }
 
@@ -81,13 +83,17 @@ export default function PromptsPanel() {
     setSearchQuery("");
   };
 
-  const handleSaveNew = async (metadata: Omit<PromptMetadata, "useCount" | "lastUsed">) => {
+  const handleSaveNew = async (
+    metadata: Omit<PromptMetadata, "useCount" | "lastUsed">,
+  ) => {
     const prompt = await createPrompt(metadata);
     selectPrompt(prompt.id);
     setViewMode("view");
   };
 
-  const handleSaveEdit = async (metadata: Omit<PromptMetadata, "useCount" | "lastUsed">) => {
+  const handleSaveEdit = async (
+    metadata: Omit<PromptMetadata, "useCount" | "lastUsed">,
+  ) => {
     if (!selectedPrompt) return;
     const prompt = await updatePrompt(selectedPrompt.id, metadata);
     selectPrompt(prompt.id);
@@ -100,7 +106,7 @@ export default function PromptsPanel() {
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
   };
 
@@ -181,7 +187,10 @@ export default function PromptsPanel() {
         <>
           <div className="px-3 py-2 border-b border-border-muted">
             <div className="relative">
-              <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted" />
+              <Search
+                size={14}
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted"
+              />
               <input
                 type="text"
                 value={searchQuery}
@@ -204,7 +213,9 @@ export default function PromptsPanel() {
 
           <div className="flex-1 overflow-y-auto p-2 space-y-2">
             {isLoading ? (
-              <div className="text-center text-sm text-text-muted mt-8">Loading...</div>
+              <div className="text-center text-sm text-text-muted mt-8">
+                Loading...
+              </div>
             ) : filteredPrompts.length === 0 ? (
               <div className="text-center text-sm text-text-muted mt-8">
                 {prompts.length === 0

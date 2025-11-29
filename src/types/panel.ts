@@ -3,7 +3,8 @@ export type PanelType =
   | "todos"
   | "calendar"
   | "settings"
-  | "prompts";
+  | "prompts"
+  | "pomodoro";
 
 export interface PanelState {
   left: PanelType | null;

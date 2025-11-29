@@ -5,7 +5,10 @@ interface VariableFormProps {
   onValuesChange: (values: Record<string, string>) => void;
 }
 
-export default function VariableForm({ variables, onValuesChange }: VariableFormProps) {
+export default function VariableForm({
+  variables,
+  onValuesChange,
+}: VariableFormProps) {
   const [values, setValues] = useState<Record<string, string>>({});
 
   useEffect(() => {

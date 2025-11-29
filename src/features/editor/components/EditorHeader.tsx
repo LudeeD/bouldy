@@ -15,7 +15,12 @@ interface EditorHeaderProps {
   isDirty: boolean;
 }
 
-export default function EditorHeader({ note, onRename, onSave, isDirty }: EditorHeaderProps) {
+export default function EditorHeader({
+  note,
+  onRename,
+  onSave,
+  isDirty,
+}: EditorHeaderProps) {
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(note.title);

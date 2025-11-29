@@ -259,6 +259,25 @@ async fn write_todos(vault_path: String, content: String) -> Result<(), String> 
 }
 
 #[tauri::command]
+async fn read_pomodoros(vault_path: String) -> Result<String, String> {
+    let pomodoro_path = Path::new(&vault_path).join(".pomodoros.md");
+
+    if !pomodoro_path.exists() {
+        // Return empty string if file doesn't exist yet
+        return Ok(String::new());
+    }
+
+    fs::read_to_string(&pomodoro_path).map_err(|e| format!("Failed to read pomodoros: {}", e))
+}
+
+#[tauri::command]
+async fn write_pomodoros(vault_path: String, content: String) -> Result<(), String> {
+    let pomodoro_path = Path::new(&vault_path).join(".pomodoros.md");
+
+    fs::write(&pomodoro_path, content).map_err(|e| format!("Failed to write pomodoros: {}", e))
+}
+
+#[tauri::command]
 async fn migrate_vault_structure(vault_path: String) -> Result<(), String> {
     let vault = Path::new(&vault_path);
     let notes_dir = vault.join("notes");
@@ -537,6 +556,8 @@ pub fn run() {
             delete_note,
             read_todos,
             write_todos,
+            read_pomodoros,
+            write_pomodoros,
             migrate_vault_structure,
             start_vault_watcher,
             list_prompts,

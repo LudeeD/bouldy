@@ -4,9 +4,16 @@ import {
   Calendar,
   Settings,
   MessageSquare,
+  Timer,
 } from "lucide-react";
 
-type PanelType = "editor" | "todos" | "calendar" | "settings" | "prompts";
+type PanelType =
+  | "editor"
+  | "todos"
+  | "calendar"
+  | "settings"
+  | "prompts"
+  | "pomodoro";
 
 interface SidebarProps {
   activePanels: {
@@ -46,7 +53,10 @@ export default function Sidebar({ activePanels, onOpenPanel }: SidebarProps) {
   };
 
   return (
-    <div className="w-12 bg-bg-dark flex flex-col items-center py-3 border-r border-border z-20">
+    <div className="w-12 bg-bg-dark flex flex-col items-center z-20">
+      {/* Boulder emoji at top */}
+      <div className="h-12 flex items-center justify-center text-lg">🪨</div>
+
       {/* Icon buttons */}
       <div className="flex flex-col gap-2">
         <SidebarButton
@@ -76,6 +86,13 @@ export default function Sidebar({ activePanels, onOpenPanel }: SidebarProps) {
           isActive={isActive("prompts")}
           onClick={() => onOpenPanel("prompts")}
         />
+
+        <SidebarButton
+          icon={<Timer size={16} />}
+          label="Pomodoro"
+          isActive={isActive("pomodoro")}
+          onClick={() => onOpenPanel("pomodoro")}
+        />
       </div>
 
       {/* Spacer */}
@@ -91,7 +108,7 @@ export default function Sidebar({ activePanels, onOpenPanel }: SidebarProps) {
         />
       </div>
 
-      <div className="writing-mode-vertical text-text-muted font-medium text-xs tracking-wider">
+      <div className="writing-mode-vertical text-text-muted font-medium text-xs tracking-wider mb-3">
         <span className="rotate-180 inline-block">Bouldy</span>
       </div>
     </div>

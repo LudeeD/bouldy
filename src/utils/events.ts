@@ -1,4 +1,4 @@
-import { listen, emit, type UnlistenFn } from '@tauri-apps/api/event';
+import { listen, emit, type UnlistenFn } from "@tauri-apps/api/event";
 
 export interface NoteEventPayload {
   path: string;
@@ -19,19 +19,19 @@ export interface NoteSelectionPayload {
 }
 
 export type NoteEventType =
-  | 'note:created'
-  | 'note:updated'
-  | 'note:deleted'
-  | 'note:saved'
-  | 'note:list-updated'
-  | 'note:selected';
+  | "note:created"
+  | "note:updated"
+  | "note:deleted"
+  | "note:saved"
+  | "note:list-updated"
+  | "note:selected";
 
 /**
  * Listen for note-related events from the Tauri backend
  */
 export async function listenToNoteEvent(
-  event: 'note:created' | 'note:updated' | 'note:deleted' | 'note:saved',
-  handler: (payload: NoteEventPayload) => void
+  event: "note:created" | "note:updated" | "note:deleted" | "note:saved",
+  handler: (payload: NoteEventPayload) => void,
 ): Promise<UnlistenFn> {
   return listen<NoteEventPayload>(event, (event) => {
     handler(event.payload);
@@ -42,9 +42,9 @@ export async function listenToNoteEvent(
  * Listen for note list updates from the Tauri backend
  */
 export async function listenToNoteListUpdated(
-  handler: (payload: NoteListPayload) => void
+  handler: (payload: NoteListPayload) => void,
 ): Promise<UnlistenFn> {
-  return listen<NoteListPayload>('note:list-updated', (event) => {
+  return listen<NoteListPayload>("note:list-updated", (event) => {
     handler(event.payload);
   });
 }
@@ -53,9 +53,9 @@ export async function listenToNoteListUpdated(
  * Listen for note selection events (frontend-only events)
  */
 export async function listenToNoteSelected(
-  handler: (payload: NoteSelectionPayload) => void
+  handler: (payload: NoteSelectionPayload) => void,
 ): Promise<UnlistenFn> {
-  return listen<NoteSelectionPayload>('note:selected', (event) => {
+  return listen<NoteSelectionPayload>("note:selected", (event) => {
     handler(event.payload);
   });
 }
@@ -63,8 +63,10 @@ export async function listenToNoteSelected(
 /**
  * Emit a note selection event (frontend-only)
  */
-export async function emitNoteSelected(payload: NoteSelectionPayload): Promise<void> {
-  await emit('note:selected', payload);
+export async function emitNoteSelected(
+  payload: NoteSelectionPayload,
+): Promise<void> {
+  await emit("note:selected", payload);
 }
 
 /**
@@ -81,16 +83,16 @@ export async function listenToNoteEvents(handlers: {
   const unlisteners: Promise<UnlistenFn>[] = [];
 
   if (handlers.onCreated) {
-    unlisteners.push(listenToNoteEvent('note:created', handlers.onCreated));
+    unlisteners.push(listenToNoteEvent("note:created", handlers.onCreated));
   }
   if (handlers.onUpdated) {
-    unlisteners.push(listenToNoteEvent('note:updated', handlers.onUpdated));
+    unlisteners.push(listenToNoteEvent("note:updated", handlers.onUpdated));
   }
   if (handlers.onDeleted) {
-    unlisteners.push(listenToNoteEvent('note:deleted', handlers.onDeleted));
+    unlisteners.push(listenToNoteEvent("note:deleted", handlers.onDeleted));
   }
   if (handlers.onSaved) {
-    unlisteners.push(listenToNoteEvent('note:saved', handlers.onSaved));
+    unlisteners.push(listenToNoteEvent("note:saved", handlers.onSaved));
   }
   if (handlers.onListUpdated) {
     unlisteners.push(listenToNoteListUpdated(handlers.onListUpdated));

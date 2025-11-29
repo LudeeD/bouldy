@@ -77,7 +77,10 @@ export function parseTodos(content: string): TodoItem[] {
         text = text.substring(2); // Remove "x "
       }
       // Remove due date and id from text
-      text = text.replace(/due:\S+/g, "").replace(/id:\S+/g, "").trim();
+      text = text
+        .replace(/due:\S+/g, "")
+        .replace(/id:\S+/g, "")
+        .trim();
 
       const todo: TodoItem = {
         id,

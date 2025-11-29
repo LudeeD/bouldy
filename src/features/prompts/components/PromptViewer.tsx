@@ -13,8 +13,16 @@ interface PromptViewerProps {
   onBack: () => void;
 }
 
-export default function PromptViewer({ prompt, onEdit, onCopy, onTrackUsage, onBack }: PromptViewerProps) {
-  const [variableValues, setVariableValues] = useState<Record<string, string>>({});
+export default function PromptViewer({
+  prompt,
+  onEdit,
+  onCopy,
+  onTrackUsage,
+  onBack,
+}: PromptViewerProps) {
+  const [variableValues, setVariableValues] = useState<Record<string, string>>(
+    {},
+  );
   const [copied, setCopied] = useState(false);
 
   const hasVariables = prompt.variables.length > 0;
@@ -65,7 +73,9 @@ export default function PromptViewer({ prompt, onEdit, onCopy, onTrackUsage, onB
           >
             <ArrowLeft size={16} />
           </button>
-          <h2 className="text-sm font-medium text-text truncate">{prompt.title}</h2>
+          <h2 className="text-sm font-medium text-text truncate">
+            {prompt.title}
+          </h2>
         </div>
         <button
           onClick={onEdit}

@@ -116,9 +116,7 @@ export default function SettingsPanel({
               <Download size={24} />
             </div>
             <div className="flex-1">
-              <div className="text-sm text-text-muted mb-1">
-                App Updates
-              </div>
+              <div className="text-sm text-text-muted mb-1">App Updates</div>
               <div className="text-sm text-text">
                 {updateStatus || "Check for the latest version"}
               </div>

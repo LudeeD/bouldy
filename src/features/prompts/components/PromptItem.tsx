@@ -7,13 +7,19 @@ interface PromptItemProps {
   onClick: () => void;
 }
 
-export default function PromptItem({ prompt, isSelected, onClick }: PromptItemProps) {
+export default function PromptItem({
+  prompt,
+  isSelected,
+  onClick,
+}: PromptItemProps) {
   const formatLastUsed = (timestamp?: number) => {
     if (!timestamp) return "Never used";
 
     const date = new Date(timestamp * 1000);
     const now = new Date();
-    const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    const diffInDays = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
     if (diffInDays === 0) return "Today";
     if (diffInDays === 1) return "Yesterday";
@@ -33,7 +39,9 @@ export default function PromptItem({ prompt, isSelected, onClick }: PromptItemPr
       }`}
     >
       <div className="flex items-start justify-between gap-2 mb-1">
-        <h3 className={`text-sm font-medium ${isSelected ? "text-primary" : "text-text"}`}>
+        <h3
+          className={`text-sm font-medium ${isSelected ? "text-primary" : "text-text"}`}
+        >
           {prompt.title}
         </h3>
         {prompt.variables.length > 0 && (

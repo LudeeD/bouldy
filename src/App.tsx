@@ -9,6 +9,11 @@ import { TodoSpace, TodosProvider, useTodos } from "./features/todos";
 import { CalendarView } from "./features/calendar";
 import { SettingsPanel } from "./features/settings";
 import { PromptsPanel, PromptsProvider } from "./features/prompts";
+import {
+  PomodoroPanel,
+  PomodoroProvider,
+  usePomodoro,
+} from "./features/pomodoro";
 import { PanelType, PanelState, PinnedState } from "./types";
 
 interface AppContentProps {
@@ -18,6 +23,7 @@ interface AppContentProps {
 
 function AppContent({ onResetVault, vaultPath }: AppContentProps) {
   const { loadTodos } = useTodos();
+  const { loadSessions } = usePomodoro();
   const [currentTheme, setCurrentTheme] = useState<string>("midnight");
   const [store, setStore] = useState<Store | null>(null);
   const [isNarrowScreen, setIsNarrowScreen] = useState(false);
@@ -91,7 +97,8 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
 
     initVault();
     loadTodos();
-  }, [vaultPath, loadTodos]);
+    loadSessions();
+  }, [vaultPath, loadTodos, loadSessions]);
 
   const activatePanel = (type: PanelType) => {
     setPanels((prev) => {
@@ -168,6 +175,8 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
         );
       case "prompts":
         return <PromptsPanel />;
+      case "pomodoro":
+        return <PomodoroPanel />;
     }
   };
 
@@ -268,7 +277,7 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
     : panels;
 
   return (
-    <div className="h-screen flex bg-bg">
+    <div className="h-screen flex bg-bg-dark">
       {/* Left icon sidebar */}
       <Sidebar activePanels={visiblePanels} onOpenPanel={activatePanel} />
 
@@ -277,7 +286,7 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
         {/* Top bar - smaller, cleaner */}
         <div
           data-tauri-drag-region
-          className="flex items-center justify-between px-4 py-2 cursor-move bg-bg-dark border-border"
+          className="flex items-center justify-between px-4 h-12 cursor-move bg-bg-dark relative"
         >
           <div className="text-xs text-primary font-mono min-w-0 truncate">
             {vaultPath}
@@ -288,7 +297,7 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
         </div>
 
         {/* Content: Two slots */}
-        <div className="flex-1 flex overflow-hidden bg-dots">
+        <div className="flex-1 flex overflow-hidden bg-dots  rounded-tl-lg">
           {!panels.left && !panels.right && <Home />}
 
           {/* Left panel - always mounted, visibility controlled by CSS */}
@@ -366,10 +375,12 @@ function App() {
   return (
     <TodosProvider vaultPath={vaultPath}>
       <PromptsProvider vaultPath={vaultPath}>
-        <AppContent
-          onResetVault={() => setVaultPath(null)}
-          vaultPath={vaultPath}
-        />
+        <PomodoroProvider vaultPath={vaultPath}>
+          <AppContent
+            onResetVault={() => setVaultPath(null)}
+            vaultPath={vaultPath}
+          />
+        </PomodoroProvider>
       </PromptsProvider>
     </TodosProvider>
   );

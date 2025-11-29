@@ -5,11 +5,17 @@ import { extractVariables } from "../utils/variable-extractor";
 
 interface PromptEditorProps {
   initialData?: PromptMetadata;
-  onSave: (metadata: Omit<PromptMetadata, "useCount" | "lastUsed">) => Promise<void>;
+  onSave: (
+    metadata: Omit<PromptMetadata, "useCount" | "lastUsed">,
+  ) => Promise<void>;
   onCancel: () => void;
 }
 
-export default function PromptEditor({ initialData, onSave, onCancel }: PromptEditorProps) {
+export default function PromptEditor({
+  initialData,
+  onSave,
+  onCancel,
+}: PromptEditorProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("");
@@ -167,7 +173,9 @@ export default function PromptEditor({ initialData, onSave, onCancel }: PromptEd
 
         {detectedVariables.length > 0 && (
           <div className="p-2 bg-highlight border border-border-muted">
-            <div className="text-xs text-text-muted mb-1">Detected Variables</div>
+            <div className="text-xs text-text-muted mb-1">
+              Detected Variables
+            </div>
             <div className="flex flex-wrap gap-1">
               {detectedVariables.map((variable) => (
                 <span

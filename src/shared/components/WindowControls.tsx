@@ -20,7 +20,7 @@ export default function WindowControls() {
     <div className="flex items-center gap-1">
       <button
         onClick={handleMinimize}
-        className="w-8 h-8 flex items-center justify-center hover:bg-highlight transition-colors text-primary"
+        className="w-10 h-10 flex items-center justify-center hover:bg-highlight transition-colors text-primary"
         aria-label="Minimize"
       >
         <svg width="10" height="2" viewBox="0 0 10 2" fill="none">
@@ -30,7 +30,7 @@ export default function WindowControls() {
 
       <button
         onClick={handleMaximize}
-        className="w-8 h-8 flex items-center justify-center hover:bg-highlight transition-colors text-primary"
+        className="w-10 h-10 flex items-center justify-center hover:bg-highlight transition-colors text-primary"
         aria-label="Maximize"
       >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -47,7 +47,7 @@ export default function WindowControls() {
 
       <button
         onClick={handleClose}
-        className="w-8 h-8 flex items-center justify-center hover:bg-danger hover:text-white transition-colors text-primary"
+        className="w-10 h-10 flex items-center justify-center hover:bg-danger hover:text-white transition-colors text-primary"
         aria-label="Close"
       >
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">

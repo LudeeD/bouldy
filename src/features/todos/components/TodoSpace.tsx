@@ -32,9 +32,8 @@ export default function TodoSpace() {
 
   const addTodo = () => {
     if (newTodoText.trim()) {
-      const dueDate = activeTab === "today"
-        ? getTodayString()
-        : (newTodoDate || undefined);
+      const dueDate =
+        activeTab === "today" ? getTodayString() : newTodoDate || undefined;
 
       setTodos([
         ...todos,
@@ -57,28 +56,32 @@ export default function TodoSpace() {
       todos.map((todo) =>
         todo.id === todoId
           ? {
-            ...todo,
-            subtasks: [
-              ...todo.subtasks,
-              { id: Date.now().toString(), text: "", completed: false },
-            ],
-            isExpanded: true,
-          }
+              ...todo,
+              subtasks: [
+                ...todo.subtasks,
+                { id: Date.now().toString(), text: "", completed: false },
+              ],
+              isExpanded: true,
+            }
           : todo,
       ),
     );
   };
 
-  const updateSubtaskText = (todoId: string, subtaskId: string, text: string) => {
+  const updateSubtaskText = (
+    todoId: string,
+    subtaskId: string,
+    text: string,
+  ) => {
     setTodos(
       todos.map((todo) =>
         todo.id === todoId
           ? {
-            ...todo,
-            subtasks: todo.subtasks.map((st) =>
-              st.id === subtaskId ? { ...st, text } : st,
-            ),
-          }
+              ...todo,
+              subtasks: todo.subtasks.map((st) =>
+                st.id === subtaskId ? { ...st, text } : st,
+              ),
+            }
           : todo,
       ),
     );
@@ -89,11 +92,11 @@ export default function TodoSpace() {
       todos.map((todo) =>
         todo.id === todoId
           ? {
-            ...todo,
-            subtasks: todo.subtasks.map((st) =>
-              st.id === subtaskId ? { ...st, completed: !st.completed } : st,
-            ),
-          }
+              ...todo,
+              subtasks: todo.subtasks.map((st) =>
+                st.id === subtaskId ? { ...st, completed: !st.completed } : st,
+              ),
+            }
           : todo,
       ),
     );
@@ -104,9 +107,9 @@ export default function TodoSpace() {
       todos.map((todo) =>
         todo.id === todoId
           ? {
-            ...todo,
-            subtasks: todo.subtasks.filter((st) => st.id !== subtaskId),
-          }
+              ...todo,
+              subtasks: todo.subtasks.filter((st) => st.id !== subtaskId),
+            }
           : todo,
       ),
     );
@@ -141,28 +144,28 @@ export default function TodoSpace() {
       {/* Header */}
       <div className="h-12 flex items-center justify-between px-3 py-1.5 border-b border-border bg-bg-light">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <h1 className="text-sm font-medium text-text">
-            Tasks
-          </h1>
+          <h1 className="text-sm font-medium text-text">Tasks</h1>
         </div>
 
         <div className="flex-shrink-0">
           <div className="flex items-center gap-0.5 bg-bg p-0.5 inline-flex border border-border-muted">
             <button
               onClick={() => setActiveTab("today")}
-              className={`px-2 py-0.5 text-xs font-medium transition-all duration-200 ${activeTab === "today"
-                ? "bg-highlight text-primary"
-                : "text-text-muted hover:bg-highlight hover:text-primary"
-                }`}
+              className={`px-2 py-0.5 text-xs font-medium transition-all duration-200 ${
+                activeTab === "today"
+                  ? "bg-highlight text-primary"
+                  : "text-text-muted hover:bg-highlight hover:text-primary"
+              }`}
             >
               Today
             </button>
             <button
               onClick={() => setActiveTab("upcoming")}
-              className={`px-2 py-0.5 text-xs font-medium transition-all duration-200 ${activeTab === "upcoming"
-                ? "bg-highlight text-primary"
-                : "text-text-muted hover:bg-highlight hover:text-primary"
-                }`}
+              className={`px-2 py-0.5 text-xs font-medium transition-all duration-200 ${
+                activeTab === "upcoming"
+                  ? "bg-highlight text-primary"
+                  : "text-text-muted hover:bg-highlight hover:text-primary"
+              }`}
             >
               Not Today
             </button>
@@ -192,7 +195,7 @@ export default function TodoSpace() {
                   <span className="text-xs">
                     {new Date(newTodoDate + "T00:00:00").toLocaleDateString(
                       "en-US",
-                      { month: "short", day: "numeric" }
+                      { month: "short", day: "numeric" },
                     )}
                   </span>
                 )}
@@ -231,20 +234,28 @@ export default function TodoSpace() {
                 {/* Checkbox */}
                 <button
                   onClick={() => toggleTodo(todo.id)}
-                  className={`flex-shrink-0 w-5 h-5 border rounded transition-colors flex items-center justify-center ${todo.completed
-                    ? "bg-primary border-primary"
-                    : "border-border hover:border-primary"
-                    }`}
+                  className={`flex-shrink-0 w-5 h-5 border rounded transition-colors flex items-center justify-center ${
+                    todo.completed
+                      ? "bg-primary border-primary"
+                      : "border-border hover:border-primary"
+                  }`}
                 >
                   {todo.completed && (
-                    <Check size={12} className="text-bg-light" strokeWidth={3} />
+                    <Check
+                      size={12}
+                      className="text-bg-light"
+                      strokeWidth={3}
+                    />
                   )}
                 </button>
 
                 {/* Task Text */}
                 <span
-                  className={`flex-1 text-sm transition-all ${todo.completed ? "text-text-muted line-through" : "text-text"
-                    }`}
+                  className={`flex-1 text-sm transition-all ${
+                    todo.completed
+                      ? "text-text-muted line-through"
+                      : "text-text"
+                  }`}
                 >
                   {todo.text}
                 </span>
@@ -253,12 +264,15 @@ export default function TodoSpace() {
                 {todo.dueDate && todo.dueDate !== getTodayString() && (
                   <div className="relative flex-shrink-0 flex items-center gap-1.5 px-1.5 py-0.5 rounded hover:bg-bg transition-colors cursor-pointer group/date">
                     <span
-                      className={`text-xs ${isPast(todo.dueDate) ? "text-danger font-medium" : "text-text-muted"
-                        }`}
+                      className={`text-xs ${
+                        isPast(todo.dueDate)
+                          ? "text-danger font-medium"
+                          : "text-text-muted"
+                      }`}
                     >
                       {new Date(todo.dueDate + "T00:00:00").toLocaleDateString(
                         "en-US",
-                        { month: "short", day: "numeric" }
+                        { month: "short", day: "numeric" },
                       )}
                     </span>
                     <input
@@ -301,13 +315,18 @@ export default function TodoSpace() {
                     >
                       <button
                         onClick={() => toggleSubtask(todo.id, subtask.id)}
-                        className={`flex-shrink-0 w-4 h-4 border rounded transition-colors flex items-center justify-center ${subtask.completed
-                          ? "bg-primary border-primary"
-                          : "border-border hover:border-primary"
-                          }`}
+                        className={`flex-shrink-0 w-4 h-4 border rounded transition-colors flex items-center justify-center ${
+                          subtask.completed
+                            ? "bg-primary border-primary"
+                            : "border-border hover:border-primary"
+                        }`}
                       >
                         {subtask.completed && (
-                          <Check size={10} className="text-bg-light" strokeWidth={3} />
+                          <Check
+                            size={10}
+                            className="text-bg-light"
+                            strokeWidth={3}
+                          />
                         )}
                       </button>
 
@@ -316,7 +335,11 @@ export default function TodoSpace() {
                           type="text"
                           value={subtask.text}
                           onChange={(e) =>
-                            updateSubtaskText(todo.id, subtask.id, e.target.value)
+                            updateSubtaskText(
+                              todo.id,
+                              subtask.id,
+                              e.target.value,
+                            )
                           }
                           onBlur={() => setEditingSubtaskId(null)}
                           onKeyDown={(e) => {
@@ -329,10 +352,11 @@ export default function TodoSpace() {
                       ) : (
                         <span
                           onClick={() => setEditingSubtaskId(subtask.id)}
-                          className={`flex-1 text-xs transition-all cursor-text ${subtask.completed
-                            ? "text-text-muted line-through"
-                            : "text-text-muted"
-                            }`}
+                          className={`flex-1 text-xs transition-all cursor-text ${
+                            subtask.completed
+                              ? "text-text-muted line-through"
+                              : "text-text-muted"
+                          }`}
                         >
                           {subtask.text || "Type here..."}
                         </span>

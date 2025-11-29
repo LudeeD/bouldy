@@ -29,4 +29,11 @@ export const themes: Record<string, Theme> = {
       primary: "oklch(0.7 0.18 340)",
     },
   },
+  clean: {
+    name: "Clean",
+    previewColors: {
+      bg: "oklch(1 0 0)",
+      primary: "oklch(0.2 0.015 252)",
+    },
+  },
 };

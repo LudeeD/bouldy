@@ -33,7 +33,9 @@ const RecentNotesBar = memo(function RecentNotesBar({
         if (path) {
           setVaultPath(path);
           // Load notes
-          const notesList = await invoke<Note[]>("list_vault_files", { vaultPath: path });
+          const notesList = await invoke<Note[]>("list_vault_files", {
+            vaultPath: path,
+          });
           setNotes(notesList);
         }
       } catch (error) {
@@ -49,37 +51,44 @@ const RecentNotesBar = memo(function RecentNotesBar({
     const setupListeners = async () => {
       const unlisteners = await listenToNoteEvents({
         onListUpdated: (payload) => {
-          setNotes(payload.notes.map(n => ({
-            path: n.path,
-            name: n.name,
-            title: n.title || "Untitled",
-            modified: n.modified || 0,
-          })));
+          setNotes(
+            payload.notes.map((n) => ({
+              path: n.path,
+              name: n.name,
+              title: n.title || "Untitled",
+              modified: n.modified || 0,
+            })),
+          );
         },
         onDeleted: (payload) => {
           // Remove deleted note from the list
-          setNotes(prev => prev.filter(note => note.path !== payload.path));
+          setNotes((prev) => prev.filter((note) => note.path !== payload.path));
         },
         onCreated: (payload) => {
           // Add newly created note to the list
-          setNotes(prev => [...prev, {
-            path: payload.path,
-            name: payload.name,
-            title: payload.title || "Untitled",
-            modified: payload.modified || 0,
-          }]);
+          setNotes((prev) => [
+            ...prev,
+            {
+              path: payload.path,
+              name: payload.name,
+              title: payload.title || "Untitled",
+              modified: payload.modified || 0,
+            },
+          ]);
         },
         onSaved: (payload) => {
           // Update note in the list when saved (updates title and modified time)
-          setNotes(prev => prev.map(note =>
-            note.path === payload.path
-              ? {
-                  ...note,
-                  title: payload.title || "Untitled",
-                  modified: payload.modified || note.modified,
-                }
-              : note
-          ));
+          setNotes((prev) =>
+            prev.map((note) =>
+              note.path === payload.path
+                ? {
+                    ...note,
+                    title: payload.title || "Untitled",
+                    modified: payload.modified || note.modified,
+                  }
+                : note,
+            ),
+          );
         },
       });
 
@@ -87,19 +96,19 @@ const RecentNotesBar = memo(function RecentNotesBar({
     };
 
     let unlisteners: Array<() => void> = [];
-    setupListeners().then(listeners => {
+    setupListeners().then((listeners) => {
       unlisteners = listeners;
     });
 
     return () => {
-      unlisteners.forEach(unlisten => unlisten());
+      unlisteners.forEach((unlisten) => unlisten());
     };
   }, []);
 
   // Sort notes by modified timestamp (descending) - memoized
   const sortedNotes = useMemo(
     () => [...notes].sort((a, b) => b.modified - a.modified),
-    [notes]
+    [notes],
   );
 
   // Update indicator position when active note changes
@@ -107,7 +116,7 @@ const RecentNotesBar = memo(function RecentNotesBar({
     if (!activePath || !containerRef.current) return;
 
     const activeButton = containerRef.current.querySelector(
-      `[data-path="${activePath}"]`
+      `[data-path="${activePath}"]`,
     ) as HTMLElement;
 
     if (activeButton) {
@@ -186,7 +195,7 @@ const RecentNotesBar = memo(function RecentNotesBar({
               key={note.path}
               data-path={note.path}
               onClick={() => onSelectNote(note)}
-              style={{ zIndex: 1, position: 'relative' }}
+              style={{ zIndex: 1, position: "relative" }}
               className={`flex items-center px-2 py-1 text-xs whitespace-nowrap transition-all duration-200 max-w-[180px] ${
                 activePath === note.path
                   ? "text-primary font-medium"

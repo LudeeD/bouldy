@@ -35,7 +35,9 @@ export default function TagFilter({
               <button
                 key={category}
                 onClick={() =>
-                  onSelectCategory(selectedCategory === category ? null : category)
+                  onSelectCategory(
+                    selectedCategory === category ? null : category,
+                  )
                 }
                 className={`px-2 py-1 text-xs border transition-colors ${
                   selectedCategory === category

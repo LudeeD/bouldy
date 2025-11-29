@@ -1,1 +1,1 @@
-export { default as VaultSelector } from './components/VaultSelector';
+export { default as VaultSelector } from "./components/VaultSelector";

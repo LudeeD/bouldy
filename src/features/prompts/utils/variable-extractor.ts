@@ -10,7 +10,10 @@ export function extractVariables(content: string): string[] {
   return Array.from(variables);
 }
 
-export function replaceVariables(content: string, values: Record<string, string>): string {
+export function replaceVariables(
+  content: string,
+  values: Record<string, string>,
+): string {
   return content.replace(/\{\{(\w+)\}\}/g, (match, variable) => {
     return values[variable] !== undefined ? values[variable] : match;
   });
