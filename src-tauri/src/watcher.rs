@@ -1,11 +1,11 @@
-use notify::{RecursiveMode, Watcher};
-use notify_debouncer_full::{new_debouncer, DebounceEventResult, Debouncer, NoCache};
+use notify::{RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{new_debouncer, DebounceEventResult, Debouncer, RecommendedCache};
+use serde::{Deserialize, Serialize};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
-use std::fs;
 use tauri::{AppHandle, Emitter};
-use serde::{Serialize, Deserialize};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct NoteEventPayload {
@@ -34,7 +34,9 @@ fn get_note_metadata(path: &Path) -> Option<NoteEventPayload> {
     }
 
     let metadata = fs::metadata(path).ok()?;
-    let modified = metadata.modified().ok()?
+    let modified = metadata
+        .modified()
+        .ok()?
         .duration_since(std::time::UNIX_EPOCH)
         .ok()?
         .as_secs();
@@ -61,15 +63,16 @@ fn emit_note_list_updated(app: &AppHandle, notes_dir: &Path) {
         }
 
         // Sort by modified time (newest first)
-        notes.sort_by(|a, b| {
-            b.modified.unwrap_or(0).cmp(&a.modified.unwrap_or(0))
-        });
+        notes.sort_by(|a, b| b.modified.unwrap_or(0).cmp(&a.modified.unwrap_or(0)));
 
         let _ = app.emit("note:list-updated", NoteListPayload { notes });
     }
 }
 
-pub fn setup_watcher(app: AppHandle, vault_path: String) -> Result<Debouncer<impl Watcher, NoCache>, String> {
+pub fn setup_watcher(
+    app: AppHandle,
+    vault_path: String,
+) -> Result<Debouncer<RecommendedWatcher, RecommendedCache>, String> {
     let vault = PathBuf::from(&vault_path);
     let notes_dir = vault.join("notes");
     let prompts_dir = vault.join("prompts");
@@ -121,7 +124,8 @@ pub fn setup_watcher(app: AppHandle, vault_path: String) -> Result<Debouncer<imp
                                     notify::EventKind::Remove(_) => {
                                         let payload = NoteEventPayload {
                                             path: path.to_string_lossy().to_string(),
-                                            name: path.file_name()
+                                            name: path
+                                                .file_name()
                                                 .unwrap_or_default()
                                                 .to_string_lossy()
                                                 .to_string(),
@@ -154,12 +158,15 @@ pub fn setup_watcher(app: AppHandle, vault_path: String) -> Result<Debouncer<imp
                 }
             }
         },
-    ).map_err(|e| format!("Failed to create debouncer: {}", e))?;
+    )
+    .map_err(|e| format!("Failed to create debouncer: {}", e))?;
 
     // Watch both directories
-    debouncer.watch(&notes_dir, RecursiveMode::NonRecursive)
+    debouncer
+        .watch(&notes_dir, RecursiveMode::NonRecursive)
         .map_err(|e| format!("Failed to watch notes directory: {}", e))?;
-    debouncer.watch(&prompts_dir, RecursiveMode::NonRecursive)
+    debouncer
+        .watch(&prompts_dir, RecursiveMode::NonRecursive)
         .map_err(|e| format!("Failed to watch prompts directory: {}", e))?;
 
     Ok(debouncer)

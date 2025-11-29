@@ -1,4 +1,11 @@
-import { useRef, useState, useMemo, useEffect, useImperativeHandle, forwardRef } from "react";
+import {
+  useRef,
+  useState,
+  useMemo,
+  useEffect,
+  useImperativeHandle,
+  forwardRef,
+} from "react";
 import {
   MDXEditor,
   headingsPlugin,
@@ -29,20 +36,28 @@ const EditorContent = forwardRef<EditorContentHandle, EditorContentProps>(
     const editorRef = useRef<MDXEditorMethods>(null);
     const [markdown, setMarkdown] = useState(initialContent);
 
-    const plugins = useMemo(() => [
-      headingsPlugin(),
-      listsPlugin(),
-      quotePlugin(),
-      thematicBreakPlugin(),
-      markdownShortcutPlugin(),
-      linkPlugin(),
-      linkDialogPlugin(),
-    ], []);
+    const plugins = useMemo(
+      () => [
+        headingsPlugin(),
+        listsPlugin(),
+        quotePlugin(),
+        thematicBreakPlugin(),
+        markdownShortcutPlugin(),
+        linkPlugin(),
+        linkDialogPlugin(),
+      ],
+      [],
+    );
 
     // Update editor content when note changes
     useEffect(() => {
       setMarkdown(initialContent);
       editorRef.current?.setMarkdown(initialContent);
+
+      // Focus the editor after content is loaded
+      setTimeout(() => {
+        editorRef.current?.focus();
+      }, 0);
     }, [notePath, initialContent]);
 
     // Save function used by both auto-save and manual save
@@ -93,7 +108,7 @@ const EditorContent = forwardRef<EditorContentHandle, EditorContentProps>(
         />
       </div>
     );
-  }
+  },
 );
 
 EditorContent.displayName = "EditorContent";

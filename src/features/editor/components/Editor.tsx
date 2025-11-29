@@ -1,6 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import "@mdxeditor/editor/style.css";
 import { invoke } from "@tauri-apps/api/core";
+import { Store } from "@tauri-apps/plugin-store";
 import RecentNotesBar from "./RecentNotesBar";
 import EditorHeader from "./EditorHeader";
 import EditorContent, { type EditorContentHandle } from "./EditorContent";
@@ -26,15 +27,67 @@ export default function Editor() {
     try {
       const metadata = await invoke<{ title: string; content: string }>(
         "read_note",
-        { path: note.path }
+        { path: note.path },
       );
 
       setCurrentNote(note);
       setNoteContent(metadata.content);
+
+      // Save last opened note path to store
+      try {
+        const store = await Store.load("settings.json");
+        await store.set("lastOpenedNotePath", note.path);
+        await store.save();
+      } catch (error) {
+        console.error("Failed to save last opened note path:", error);
+      }
     } catch (error) {
       console.error("Failed to load note:", error);
     }
   };
+
+  // Load last opened note on mount
+  useEffect(() => {
+    const loadLastNote = async () => {
+      try {
+        const store = await Store.load("settings.json");
+        const lastNotePath = await store.get<string>("lastOpenedNotePath");
+
+        if (lastNotePath) {
+          // Verify the note still exists by trying to read it
+          try {
+            const metadata = await invoke<{ title: string; content: string }>(
+              "read_note",
+              { path: lastNotePath },
+            );
+
+            // Get file stats for modified time
+            const vaultPath = await invoke<string | null>("get_vault_path");
+            if (vaultPath) {
+              const notes = await invoke<Note[]>("list_vault_files", {
+                vaultPath,
+              });
+              const note = notes.find((n) => n.path === lastNotePath);
+
+              if (note) {
+                setCurrentNote(note);
+                setNoteContent(metadata.content);
+              }
+            }
+          } catch (error) {
+            // Note doesn't exist anymore, clear the stored path
+            console.log("Last opened note no longer exists");
+            await store.delete("lastOpenedNotePath");
+            await store.save();
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load last opened note:", error);
+      }
+    };
+
+    loadLastNote();
+  }, []);
 
   const handleRename = async (newTitle: string) => {
     if (!currentNote) return;
@@ -49,7 +102,7 @@ export default function Editor() {
       // Read current content (no frontmatter to manipulate)
       const metadata = await invoke<{ title: string; content: string }>(
         "read_note",
-        { path: currentNote.path }
+        { path: currentNote.path },
       );
 
       // Write to new path with same content
@@ -66,15 +119,25 @@ export default function Editor() {
       });
 
       // Update current note
-      setCurrentNote({
+      const updatedNote = {
         ...currentNote,
         path: newPath,
         title: newTitle,
         name: newFileName,
-      });
+      };
+      setCurrentNote(updatedNote);
 
       // Update noteContent to match new path
       setNoteContent(metadata.content);
+
+      // Update stored last opened note path
+      try {
+        const store = await Store.load("settings.json");
+        await store.set("lastOpenedNotePath", newPath);
+        await store.save();
+      } catch (error) {
+        console.error("Failed to update last opened note path:", error);
+      }
     } catch (error) {
       console.error("Failed to rename note:", error);
       throw error;
@@ -133,10 +196,7 @@ export default function Editor() {
       </div>
 
       {/* Bottom Bar: Recent Notes */}
-      <RecentNotesBar
-        activePath={currentNote?.path}
-        onSelectNote={loadNote}
-      />
+      <RecentNotesBar activePath={currentNote?.path} onSelectNote={loadNote} />
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { TodoSpace, TodosProvider, useTodos } from "./features/todos";
 import { CalendarView } from "./features/calendar";
 import { SettingsPanel } from "./features/settings";
 import { PromptsPanel, PromptsProvider } from "./features/prompts";
-import { PanelType, PanelState } from "./types";
+import { PanelType, PanelState, PinnedState } from "./types";
 
 interface AppContentProps {
   onResetVault: () => void;
@@ -26,6 +26,12 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
   const [panels, setPanels] = useState<PanelState>({
     left: "editor",
     right: "todos",
+  });
+
+  // Track which panels are pinned
+  const [pinnedPanels, setPinnedPanels] = useState<PinnedState>({
+    left: false,
+    right: false,
   });
 
   // Track which side was last interacted with (default to left)
@@ -87,19 +93,9 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
     loadTodos();
   }, [vaultPath, loadTodos]);
 
-  const activatePanel = (type: PanelType, side?: "left" | "right") => {
+  const activatePanel = (type: PanelType) => {
     setPanels((prev) => {
-      // If side is explicitly requested
-      if (side) {
-        // If panel is already open in the OTHER slot, clear it from there
-        const otherSide = side === "left" ? "right" : "left";
-        if (prev[otherSide] === type) {
-          return { ...prev, [otherSide]: null, [side]: type };
-        }
-        return { ...prev, [side]: type };
-      }
-
-      // If panel is already open, just ensure it's focused (update MRU side externally)
+      // If panel is already open, just update MRU
       if (prev.left === type) {
         setMruSide("left");
         return prev;
@@ -110,45 +106,48 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
       }
 
       // If there's an empty slot, use it
-      if (!prev.left) return { ...prev, left: type };
-      if (!prev.right) return { ...prev, right: type };
+      if (!prev.left) {
+        setMruSide("left");
+        return { ...prev, left: type };
+      }
+      if (!prev.right) {
+        setMruSide("right");
+        return { ...prev, right: type };
+      }
 
-      // Both full: replace the LEAST recently used side
-      // If MRU is left, replace right. If MRU is right, replace left.
-      const targetSide = mruSide === "left" ? "right" : "left";
+      // Both slots full: replace based on pinned state
+      // If left is pinned, replace right. If right is pinned, replace left.
+      // If neither pinned, replace the LEAST recently used side.
+      // If both pinned, replace the LEAST recently used side.
+      let targetSide: "left" | "right";
+
+      if (pinnedPanels.left && !pinnedPanels.right) {
+        targetSide = "right";
+      } else if (pinnedPanels.right && !pinnedPanels.left) {
+        targetSide = "left";
+      } else {
+        // Neither pinned or both pinned: use MRU logic
+        targetSide = mruSide === "left" ? "right" : "left";
+      }
+
+      setMruSide(targetSide);
       return { ...prev, [targetSide]: type };
     });
-
-    // If we opened a new panel, update MRU to that side
-    if (side) {
-      setMruSide(side);
-    } else {
-      // If auto-placed, we need to know where it went.
-      // This is a bit tricky with React state updates being async.
-      // For simplicity, we'll assume if we are replacing, we update MRU to the replaced side.
-      // But actually, let's just let the user interaction update MRU later,
-      // or infer it. For now, let's force MRU update if we know where it's going.
-      // To keep it simple, we won't setMruSide here for the auto-case unless we are sure.
-      // Actually, if we replace the non-MRU side, that side BECOMES the MRU side because the user just asked for it.
-      setMruSide((prev) => {
-        // If panel is already open (checked above, but logic here is for new opens)
-        // We can't easily access the 'prev' state from inside this setter correctly if we depend on the *result* of the previous setter.
-        // So we'll rely on the effect or just simple logic:
-        // If we are just switching panels, the new panel becomes active.
-        return prev === "left" ? "right" : "left";
-        // Wait, if MRU is left, we replace right. So right becomes MRU. Correct.
-      });
-    }
   };
 
   const closePanel = (side: "left" | "right") => {
     setPanels((prev) => ({ ...prev, [side]: null }));
+    // Clear pinned state when closing
+    setPinnedPanels((prev) => ({ ...prev, [side]: false }));
+  };
+
+  const togglePinPanel = (side: "left" | "right") => {
+    setPinnedPanels((prev) => ({ ...prev, [side]: !prev[side] }));
   };
 
   const handlePanelFocus = (side: "left" | "right") => {
     setMruSide(side);
   };
-
 
   const renderPanel = (type: PanelType) => {
     switch (type) {
@@ -185,56 +184,93 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
         onFocus={() => handlePanelFocus(side)}
       >
         <div className="flex-1 overflow-auto p-2 relative group">
-          {/* Close button for the slot */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              closePanel(side);
-            }}
-            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-0.5 bg-bg-light hover:bg-danger hover:text-white transition-all z-20 flex items-center justify-center"
-            title="Close Panel"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {/* Control buttons for the slot */}
+          <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-20">
+            {/* Pin button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePinPanel(side);
+              }}
+              className={`p-0.5 transition-all flex items-center justify-center ${
+                pinnedPanels[side]
+                  ? "bg-primary text-white"
+                  : "bg-bg-light hover:bg-primary hover:text-white"
+              }`}
+              title={pinnedPanels[side] ? "Unpin Panel" : "Pin Panel"}
             >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill={pinnedPanels[side] ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="12" y1="17" x2="12" y2="22"></line>
+                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>
+              </svg>
+            </button>
+
+            {/* Close button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                closePanel(side);
+              }}
+              className="p-0.5 bg-bg-light hover:bg-danger hover:text-white transition-all flex items-center justify-center"
+              title="Close Panel"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
 
           {/* Render only the active panel for this slot */}
-          <div className="w-full h-full">
-            {renderPanel(type)}
-          </div>
+          <div className="w-full h-full">{renderPanel(type)}</div>
         </div>
       </div>
     );
   };
 
   // Calculate visible panels based on narrow screen mode
+  // Prioritize pinned panel, then fall back to MRU side
   const visiblePanels = isNarrowScreen
     ? {
-      left: mruSide === "left" ? panels.left : null,
-      right: mruSide === "right" ? panels.right : null,
-    }
+        left:
+          pinnedPanels.left && panels.left
+            ? panels.left
+            : mruSide === "left"
+              ? panels.left
+              : null,
+        right:
+          pinnedPanels.right && panels.right
+            ? panels.right
+            : mruSide === "right"
+              ? panels.right
+              : null,
+      }
     : panels;
 
   return (
     <div className="h-screen flex bg-bg">
       {/* Left icon sidebar */}
-      <Sidebar
-        activePanels={visiblePanels}
-        onOpenPanel={activatePanel}
-        disableSplitView={isNarrowScreen}
-      />
+      <Sidebar activePanels={visiblePanels} onOpenPanel={activatePanel} />
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col">
@@ -330,7 +366,10 @@ function App() {
   return (
     <TodosProvider vaultPath={vaultPath}>
       <PromptsProvider vaultPath={vaultPath}>
-        <AppContent onResetVault={() => setVaultPath(null)} vaultPath={vaultPath} />
+        <AppContent
+          onResetVault={() => setVaultPath(null)}
+          vaultPath={vaultPath}
+        />
       </PromptsProvider>
     </TodosProvider>
   );
