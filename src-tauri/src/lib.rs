@@ -537,6 +537,67 @@ async fn track_prompt_usage(_app: AppHandle, vault_path: String, id: String) -> 
     Ok(())
 }
 
+#[tauri::command]
+async fn get_saved_theme(app: tauri::AppHandle) -> Result<String, String> {
+    eprintln!("[RUST] get_saved_theme called");
+    match app.store("settings.json") {
+        Ok(store) => {
+            eprintln!("[RUST] Store loaded successfully");
+            // Store exists, try to get theme
+            match store.get("theme") {
+                Some(v) => {
+                    if let Some(theme_str) = v.as_str() {
+                        eprintln!("[RUST] get_saved_theme: Found theme = '{}'", theme_str);
+                        Ok(theme_str.to_string())
+                    } else {
+                        eprintln!("[RUST] get_saved_theme: theme value is not a string, value: {:?}", v);
+                        Ok("midnight".to_string())
+                    }
+                }
+                None => {
+                    eprintln!("[RUST] get_saved_theme: No 'theme' key in store, returning default midnight");
+                    Ok("midnight".to_string())
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("[RUST] get_saved_theme: Store load error: {}", e);
+            eprintln!("[RUST] This is normal on first run when no settings.json exists yet");
+            Ok("midnight".to_string())
+        }
+    }
+}
+
+#[tauri::command]
+async fn log_startup_metrics(
+    theme_init_ms: f64,
+    react_mount_ms: f64,
+    total_ms: f64,
+    first_paint_ms: Option<f64>,
+) -> Result<(), String> {
+    let theme_pct = (theme_init_ms / total_ms * 100.0).round();
+    let react_pct = (react_mount_ms / total_ms * 100.0).round();
+
+    println!("⚡ STARTUP METRICS");
+    println!("  Theme Init:  {}ms ({}%)", theme_init_ms, theme_pct);
+    println!("  React Mount: {}ms ({}%)", react_mount_ms, react_pct);
+    println!("  Total:       {}ms", total_ms);
+    if let Some(fcp) = first_paint_ms {
+        println!("  First Paint: {}ms", fcp);
+    }
+
+    // Performance assessment
+    if total_ms > 1000.0 {
+        eprintln!("  ⚠️ Slow startup - check for blocking operations");
+    } else if total_ms > 500.0 {
+        println!("  ✓ Acceptable startup");
+    } else {
+        println!("  ✨ Fast startup");
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -564,7 +625,9 @@ pub fn run() {
             read_prompt,
             write_prompt,
             delete_prompt,
-            track_prompt_usage
+            track_prompt_usage,
+            get_saved_theme,
+            log_startup_metrics
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

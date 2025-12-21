@@ -160,56 +160,56 @@ const RecentNotesBar = memo(function RecentNotesBar({
     }
   };
 
-  return (
-    <div className="h-10 w-full border-t border-border flex items-center px-2 py-1">
-      <button
-        onClick={handleCreateNewNote}
-        className="flex items-center gap-1.5 px-2 py-1 bg-primary text-bg-light hover:opacity-90 transition-opacity text-xs font-medium"
-        title="New Note"
-      >
-        <Plus size={14} />
-        <span>New</span>
-      </button>
+   return (
+     <div className="h-10 w-full border-t border-border flex items-center px-2 py-1 bg-bg-dark flex-shrink-0 overflow-hidden">
+       <button
+         onClick={handleCreateNewNote}
+         className="flex items-center gap-1.5 px-2 py-1 bg-primary text-bg-light hover:opacity-90 transition-opacity text-xs font-medium flex-shrink-0"
+         title="New Note"
+       >
+         <Plus size={14} />
+         <span>New</span>
+       </button>
 
-      <div className="h-4 w-px bg-border mx-2" />
+       <div className="h-4 w-px bg-border mx-2 flex-shrink-0" />
 
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-x-auto no-scrollbar relative"
-      >
-        <div className="flex items-center gap-2 relative">
-          {/* Active background highlight - positioned absolutely behind buttons */}
-          {activePath && indicatorStyle.width > 0 && (
-            <div
-              className="absolute top-0 bottom-0 bg-highlight transition-all duration-300 ease-out"
-              style={{
-                left: `${indicatorStyle.left}px`,
-                width: `${indicatorStyle.width}px`,
-                zIndex: 0,
-              }}
-            />
-          )}
+        <div
+          ref={containerRef}
+          className="overflow-x-auto overflow-y-hidden no-scrollbar relative min-w-0 flex-1 h-full"
+        >
+          <div className="flex items-center gap-2 relative h-full">
+           {/* Active background highlight - positioned absolutely behind buttons */}
+           {activePath && indicatorStyle.width > 0 && (
+             <div
+               className="absolute top-0 bottom-0 bg-highlight transition-all duration-300 ease-out"
+               style={{
+                 left: `${indicatorStyle.left}px`,
+                 width: `${indicatorStyle.width}px`,
+                 zIndex: 0,
+               }}
+             />
+           )}
 
-          {sortedNotes.map((note) => (
-            <button
-              key={note.path}
-              data-path={note.path}
-              onClick={() => onSelectNote(note)}
-              style={{ zIndex: 1, position: "relative" }}
-              className={`flex items-center px-2 py-1 text-xs whitespace-nowrap transition-all duration-200 max-w-[180px] ${
-                activePath === note.path
-                  ? "text-primary font-medium"
-                  : "text-text-muted hover:text-text hover:bg-primary/10"
-              }`}
-              title={note.title}
-            >
-              <span className="truncate">{note.title}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+           {sortedNotes.map((note) => (
+             <button
+               key={note.path}
+               data-path={note.path}
+               onClick={() => onSelectNote(note)}
+               style={{ zIndex: 1, position: "relative" }}
+               className={`flex items-center px-2 py-1 text-xs whitespace-nowrap transition-all duration-200 max-w-[180px] flex-shrink-0 ${
+                 activePath === note.path
+                   ? "text-primary font-medium"
+                   : "text-text-muted hover:text-text hover:bg-primary/10"
+               }`}
+               title={note.title}
+             >
+               <span className="truncate">{note.title}</span>
+             </button>
+           ))}
+         </div>
+       </div>
+     </div>
+   );
 });
 
 export default RecentNotesBar;

@@ -24,7 +24,10 @@ interface AppContentProps {
 function AppContent({ onResetVault, vaultPath }: AppContentProps) {
   const { loadTodos } = useTodos();
   const { loadSessions } = usePomodoro();
-  const [currentTheme, setCurrentTheme] = useState<string>("midnight");
+  // Get initial theme from DOM (pre-initialized in index.html)
+  const [currentTheme, setCurrentTheme] = useState<string>(() => {
+    return document.documentElement.getAttribute("data-theme") || "midnight";
+  });
   const [store, setStore] = useState<Store | null>(null);
   const [isNarrowScreen, setIsNarrowScreen] = useState(false);
 
@@ -43,32 +46,36 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
   // Track which side was last interacted with (default to left)
   const [mruSide, setMruSide] = useState<"left" | "right">("left");
 
-  // Initialize store
-  useEffect(() => {
-    const initStore = async () => {
-      const newStore = await Store.load("settings.json");
-      setStore(newStore);
+   // Initialize store and load saved theme
+   useEffect(() => {
+     const initStore = async () => {
+       const newStore = await Store.load("settings.json");
+       setStore(newStore);
 
-      // Load saved theme
-      const savedTheme = await newStore.get<string>("theme");
-      if (savedTheme) {
-        setCurrentTheme(savedTheme);
-      }
-    };
-    initStore();
-  }, []);
+       // Load saved theme - always apply it if it exists
+       const savedTheme = await newStore.get<string>("theme");
+       console.log('[APP] Store initialized, savedTheme:', savedTheme);
+       console.log('[APP] currentTheme from DOM:', currentTheme);
+       
+       if (savedTheme) {
+         console.log('[APP] Setting saved theme:', savedTheme);
+         setCurrentTheme(savedTheme);
+       }
+     };
+     initStore();
+   }, [currentTheme]);
 
-  // Apply theme and save to store
-  useEffect(() => {
-    const root = window.document.documentElement;
-    root.setAttribute("data-theme", currentTheme);
+   // Apply theme and save to store when it changes
+   useEffect(() => {
+     const root = window.document.documentElement;
+     root.setAttribute("data-theme", currentTheme);
 
-    // Save theme to store
-    if (store) {
-      store.set("theme", currentTheme);
-      store.save();
-    }
-  }, [currentTheme, store]);
+     // Save theme to store
+     if (store) {
+       store.set("theme", currentTheme);
+       store.save();
+     }
+   }, [currentTheme, store]);
 
   // Track screen width for responsive layout
   // Only enable single-panel mode if BOTH panels are open AND screen is narrow
@@ -281,8 +288,8 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
       {/* Left icon sidebar */}
       <Sidebar activePanels={visiblePanels} onOpenPanel={activatePanel} />
 
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col">
+       {/* Main content area */}
+       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top bar - smaller, cleaner */}
         <div
           data-tauri-drag-region
@@ -362,7 +369,7 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-bg">
         <div className="text-primary">Loading...</div>
       </div>
     );

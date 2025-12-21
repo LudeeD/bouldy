@@ -216,3 +216,14 @@ npm run tauri build   # Build desktop app for current platform
 - No need for backwards compatibility - always use latest dependencies
 - Focus on creating a delightful writing experience
 - Performance matters - Tauri apps should feel native and responsive
+
+## Tauri 2 + React Patterns
+
+See `.claude/TAURI_REACT_PATTERNS.md` for learned best practices on:
+- Backend-driven UI (Rust as source of truth)
+- Theme loading without flash
+- Never inventing storage mechanisms
+- React UI as "dumb" renderer
+- Tauri 2.0 API access patterns
+
+**Core rule**: Rust/Tauri Store owns persistence. React loads from Rust and confirms. localStorage is never for critical persistent state.

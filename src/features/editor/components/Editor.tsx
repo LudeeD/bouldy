@@ -144,10 +144,10 @@ export default function Editor() {
     }
   };
 
-  return (
-    <div className="w-full h-full flex flex-col bg-bg-light border border-border-muted shadow-sm overflow-hidden relative z-10">
-      {/* Main Editor Area */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+    return (
+      <div className="w-full h-full flex flex-col bg-bg-light border border-border-muted shadow-sm overflow-hidden relative z-10 min-w-0 min-h-0">
+        {/* Main Editor Area */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden min-w-0">
         {!currentNote ? (
           <div className="flex-1 flex items-center justify-center bg-bg">
             <div className="text-center space-y-3 px-6 py-8">

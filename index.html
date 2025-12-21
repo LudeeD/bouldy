@@ -5,10 +5,155 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tauri + React + Typescript</title>
+    
+    <!-- CRITICAL: Theme initialization - load theme from Rust backend -->
+    <script type="module">
+      import { invoke } from '@tauri-apps/api/core';
+      
+      // THEME COLOR MAPPING - must match src/styles/App.css
+      const themeColors = {
+        midnight: { bg: '#262626', text: '#f5f5f5' },
+        dawn: { bg: '#f2f2f5', text: '#333333' },
+        forest: { bg: '#242e24', text: '#f0f0f0' },
+        sunset: { bg: '#2a2430', text: '#f2f2f2' },
+        clean: { bg: '#ffffff', text: '#333333' }
+      };
+      
+      function applyTheme(themeName) {
+        console.log('[THEME] Applying theme:', themeName);
+        document.documentElement.setAttribute('data-theme', themeName);
+        
+        if (document.body) {
+          const colors = themeColors[themeName] || themeColors.midnight;
+          document.body.style.backgroundColor = colors.bg;
+          document.body.style.color = colors.text;
+        }
+        window.__PRELOADED_THEME__ = themeName;
+      }
+      
+      // Load theme from Rust backend immediately
+      (async function loadThemeFromRust() {
+        try {
+          console.log('[THEME] Loading saved theme from Rust...');
+          const theme = await invoke('get_saved_theme');
+          console.log('[THEME] Got theme from Rust:', theme);
+          applyTheme(theme);
+        } catch (error) {
+          console.error('[THEME] Failed to load theme, using default midnight:', error);
+          applyTheme('midnight');
+        }
+      })();
+    </script>
+
+    <!-- CRITICAL: Inline critical CSS to prevent theme flash -->
+    <style>
+      /* Base body styles - colors applied by script before render */
+      body {
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        --bg-dark: oklch(0.1 0.025 264);
+        --bg: oklch(0.15 0.025 264);
+        --bg-light: oklch(0.2 0.025 264);
+        --text: oklch(0.96 0.05 264);
+        --text-muted: oklch(0.76 0.05 264);
+        --highlight: oklch(0.5 0.05 264);
+        --border: oklch(0.4 0.05 264);
+        --border-muted: oklch(0.3 0.05 264);
+        --primary: oklch(0.76 0.1 264);
+        --secondary: oklch(0.76 0.1 84);
+        --danger: oklch(0.7 0.05 30);
+        --warning: oklch(0.7 0.05 100);
+        --success: oklch(0.7 0.05 160);
+        --info: oklch(0.7 0.05 260);
+      }
+      
+      [data-theme="dawn"] {
+        --bg-dark: oklch(0.92 0.03 252);
+        --bg: oklch(0.95 0.02 252);
+        --bg-light: oklch(0.98 0.01 252);
+        --text: oklch(0.2 0.04 252);
+        --text-muted: oklch(0.4 0.04 252);
+        --highlight: oklch(0.85 0.05 252);
+        --border: oklch(0.8 0.04 252);
+        --border-muted: oklch(0.9 0.02 252);
+        --primary: oklch(0.5 0.15 252);
+        --secondary: oklch(0.6 0.15 72);
+        --danger: oklch(0.6 0.15 30);
+        --warning: oklch(0.75 0.15 80);
+        --success: oklch(0.6 0.15 150);
+        --info: oklch(0.6 0.15 240);
+      }
+      
+      [data-theme="forest"] {
+        --bg-dark: oklch(0.1 0.03 150);
+        --bg: oklch(0.14 0.04 150);
+        --bg-light: oklch(0.18 0.05 150);
+        --text: oklch(0.94 0.04 150);
+        --text-muted: oklch(0.75 0.06 150);
+        --highlight: oklch(0.35 0.08 150);
+        --border: oklch(0.3 0.06 150);
+        --border-muted: oklch(0.25 0.04 150);
+        --primary: oklch(0.7 0.12 150);
+        --secondary: oklch(0.75 0.12 80);
+        --danger: oklch(0.65 0.15 25);
+        --warning: oklch(0.8 0.12 90);
+        --success: oklch(0.7 0.12 140);
+        --info: oklch(0.7 0.1 220);
+      }
+      
+      [data-theme="sunset"] {
+        --bg-dark: oklch(0.12 0.04 300);
+        --bg: oklch(0.16 0.05 320);
+        --bg-light: oklch(0.22 0.06 330);
+        --text: oklch(0.95 0.04 320);
+        --text-muted: oklch(0.75 0.06 320);
+        --highlight: oklch(0.4 0.1 320);
+        --border: oklch(0.35 0.08 320);
+        --border-muted: oklch(0.25 0.06 320);
+        --primary: oklch(0.7 0.18 340);
+        --secondary: oklch(0.75 0.15 40);
+        --danger: oklch(0.65 0.18 20);
+        --warning: oklch(0.8 0.15 70);
+        --success: oklch(0.7 0.15 140);
+        --info: oklch(0.7 0.12 260);
+      }
+      
+      [data-theme="clean"] {
+        --bg-dark: oklch(0.98 0 0);
+        --bg: oklch(1 0 0);
+        --bg-light: oklch(0.99 0 0);
+        --text: oklch(0.2 0.015 252);
+        --text-muted: oklch(0.45 0.015 252);
+        --highlight: oklch(0.96 0.005 252);
+        --border: oklch(0.88 0.005 252);
+        --border-muted: oklch(0.94 0.003 252);
+        --primary: oklch(0.2 0.015 252);
+        --secondary: oklch(0.35 0.02 252);
+        --danger: oklch(0.55 0.22 25);
+        --warning: oklch(0.65 0.15 85);
+        --success: oklch(0.5 0.15 145);
+        --info: oklch(0.5 0.15 240);
+      }
+      
+      html, body, #root {
+        height: 100%;
+        overflow: hidden;
+      }
+      
+      /* Theme will be applied by script above */
+      body {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
   </head>
 
   <body>
     <div id="root"></div>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
