@@ -74,10 +74,9 @@ export default function Editor() {
                 setNoteContent(metadata.content);
               }
             }
-          } catch (error) {
-            // Note doesn't exist anymore, clear the stored path
-            console.log("Last opened note no longer exists");
-            await store.delete("lastOpenedNotePath");
+           } catch (error) {
+             // Note doesn't exist anymore, clear the stored path
+             await store.delete("lastOpenedNotePath");
             await store.save();
           }
         }

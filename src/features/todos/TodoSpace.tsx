@@ -1,9 +1,141 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Check, X, Scissors, Calendar } from "lucide-react";
-import { useTodos } from "../context/TodosContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import type { TodoItem } from "../../types/todo";
 
-export default function TodoSpace() {
-  const { todos, setTodos } = useTodos();
+interface TodoSpaceProps {
+  vaultPath: string;
+}
+
+// Query key for todos
+const TODOS_QUERY_KEY = ["todos"];
+
+// Hook to use todos with TanStack Query
+function useTodosQuery(vaultPath: string) {
+  const queryClient = useQueryClient();
+
+  // Main query for fetching todos
+  const todosQuery = useQuery({
+    queryKey: [...TODOS_QUERY_KEY, vaultPath],
+    queryFn: async () => invoke<TodoItem[]>("load_todos", { vaultPath }),
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+  });
+
+  // Listen for external changes
+  useEffect(() => {
+    const setupListener = async () => {
+      const unlisten = await listen("todos_changed", () => {
+        queryClient.invalidateQueries({
+          queryKey: [...TODOS_QUERY_KEY, vaultPath],
+        });
+      });
+      return unlisten;
+    };
+
+    let unlistenFn: (() => void) | null = null;
+    setupListener().then((fn) => {
+      unlistenFn = fn;
+    });
+
+    return () => {
+      if (unlistenFn) unlistenFn();
+    };
+  }, [vaultPath, queryClient]);
+
+  const createTodoMutation = useMutation({
+    mutationFn: async ({ title, dueDate }: { title: string; dueDate?: string }) => {
+      return invoke<TodoItem>("create_todo", { vaultPath, title, dueDate: dueDate || null });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...TODOS_QUERY_KEY, vaultPath] });
+    },
+  });
+
+  const toggleTodoMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return invoke<TodoItem>("toggle_todo", { vaultPath, id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...TODOS_QUERY_KEY, vaultPath] });
+    },
+  });
+
+  const deleteTodoMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return invoke("delete_todo", { vaultPath, id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...TODOS_QUERY_KEY, vaultPath] });
+    },
+  });
+
+  const updateDueDateMutation = useMutation({
+    mutationFn: async ({ id, dueDate }: { id: number; dueDate?: string }) => {
+      return invoke<TodoItem>("update_todo_due_date", { vaultPath, id, dueDate: dueDate || null });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...TODOS_QUERY_KEY, vaultPath] });
+    },
+  });
+
+  const addSubtaskMutation = useMutation({
+    mutationFn: async ({ parentId, title }: { parentId: number; title: string }) => {
+      return invoke<TodoItem>("add_subtask", { vaultPath, parentId, title });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...TODOS_QUERY_KEY, vaultPath] });
+    },
+  });
+
+  const deleteSubtaskMutation = useMutation({
+    mutationFn: async ({ parentId, subtaskIndex }: { parentId: number; subtaskIndex: number }) => {
+      return invoke<TodoItem>("delete_subtask", { vaultPath, parentId, subtaskIndex });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...TODOS_QUERY_KEY, vaultPath] });
+    },
+  });
+
+  const toggleSubtaskMutation = useMutation({
+    mutationFn: async ({ parentId, subtaskIndex }: { parentId: number; subtaskIndex: number }) => {
+      return invoke<TodoItem>("toggle_subtask", { vaultPath, parentId, subtaskIndex });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...TODOS_QUERY_KEY, vaultPath] });
+    },
+  });
+
+  return {
+    todos: todosQuery.data ?? [],
+    isLoading: todosQuery.isLoading,
+    error: todosQuery.error,
+    createTodo: createTodoMutation.mutate,
+    toggleTodo: toggleTodoMutation.mutate,
+    deleteTodo: deleteTodoMutation.mutate,
+    updateDueDate: updateDueDateMutation.mutate,
+    addSubtask: addSubtaskMutation.mutate,
+    deleteSubtask: deleteSubtaskMutation.mutate,
+    toggleSubtask: toggleSubtaskMutation.mutate,
+  };
+}
+
+// Main component
+export default function TodoSpace({ vaultPath }: TodoSpaceProps) {
+  const {
+    todos,
+    isLoading,
+    createTodo,
+    toggleTodo,
+    deleteTodo,
+    updateDueDate,
+    addSubtask,
+    deleteSubtask,
+    toggleSubtask,
+  } = useTodosQuery(vaultPath);
+
   const [newTodoText, setNewTodoText] = useState("");
   const [newTodoDate, setNewTodoDate] = useState("");
   const [activeTab, setActiveTab] = useState<"today" | "upcoming">("today");
@@ -30,114 +162,28 @@ export default function TodoSpace() {
     }
   });
 
-  const addTodo = () => {
+  const handleAddTodo = () => {
     if (newTodoText.trim()) {
-      const dueDate =
-        activeTab === "today" ? getTodayString() : newTodoDate || undefined;
-
-      setTodos([
-        ...todos,
-        {
-          id: Date.now().toString(),
-          text: newTodoText.trim(),
-          completed: false,
-          dueDate,
-          subtasks: [],
-          isExpanded: false,
-        },
-      ]);
+      const dueDate = activeTab === "today" ? getTodayString() : newTodoDate || undefined;
+      createTodo({ title: newTodoText.trim(), dueDate });
       setNewTodoText("");
       setNewTodoDate("");
     }
   };
 
-  const addSubtask = (todoId: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === todoId
-          ? {
-              ...todo,
-              subtasks: [
-                ...todo.subtasks,
-                { id: Date.now().toString(), text: "", completed: false },
-              ],
-              isExpanded: true,
-            }
-          : todo,
-      ),
-    );
-  };
-
-  const updateSubtaskText = (
-    todoId: string,
-    subtaskId: string,
-    text: string,
-  ) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === todoId
-          ? {
-              ...todo,
-              subtasks: todo.subtasks.map((st) =>
-                st.id === subtaskId ? { ...st, text } : st,
-              ),
-            }
-          : todo,
-      ),
-    );
-  };
-
-  const toggleSubtask = (todoId: string, subtaskId: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === todoId
-          ? {
-              ...todo,
-              subtasks: todo.subtasks.map((st) =>
-                st.id === subtaskId ? { ...st, completed: !st.completed } : st,
-              ),
-            }
-          : todo,
-      ),
-    );
-  };
-
-  const deleteSubtask = (todoId: string, subtaskId: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === todoId
-          ? {
-              ...todo,
-              subtasks: todo.subtasks.filter((st) => st.id !== subtaskId),
-            }
-          : todo,
-      ),
-    );
-  };
-
-  const toggleTodo = (id: string) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo,
-      ),
-    );
-  };
-
-  const deleteTodo = (id: string) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
-  };
-
-  const updateTodoDate = (id: string, date: string) => {
-    setTodos(
-      todos.map((todo) => (todo.id === id ? { ...todo, dueDate: date } : todo)),
-    );
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
-      addTodo();
+      handleAddTodo();
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-bg-light">
+        <div className="text-sm text-text-muted">Loading tasks...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full flex flex-col bg-bg-light border border-border-muted shadow-sm overflow-hidden relative z-10">
@@ -195,7 +241,7 @@ export default function TodoSpace() {
                   <span className="text-xs">
                     {new Date(newTodoDate + "T00:00:00").toLocaleDateString(
                       "en-US",
-                      { month: "short", day: "numeric" },
+                      { month: "short", day: "numeric" }
                     )}
                   </span>
                 )}
@@ -213,7 +259,7 @@ export default function TodoSpace() {
             </div>
           )}
           <button
-            onClick={addTodo}
+            onClick={handleAddTodo}
             className="h-9 px-3 bg-primary text-bg-light hover:opacity-90 transition-opacity border border-primary flex items-center justify-center"
           >
             <Plus size={16} />
@@ -241,44 +287,36 @@ export default function TodoSpace() {
                   }`}
                 >
                   {todo.completed && (
-                    <Check
-                      size={12}
-                      className="text-bg-light"
-                      strokeWidth={3}
-                    />
+                    <Check size={12} className="text-bg-light" strokeWidth={3} />
                   )}
                 </button>
 
                 {/* Task Text */}
                 <span
                   className={`flex-1 text-sm transition-all ${
-                    todo.completed
-                      ? "text-text-muted line-through"
-                      : "text-text"
+                    todo.completed ? "text-text-muted line-through" : "text-text"
                   }`}
                 >
-                  {todo.text}
+                  {todo.title}
                 </span>
 
-                {/* Date Display - visible if date exists and is not today */}
+                {/* Date Display */}
                 {todo.dueDate && todo.dueDate !== getTodayString() && (
-                  <div className="relative flex-shrink-0 flex items-center gap-1.5 px-1.5 py-0.5 rounded hover:bg-bg transition-colors cursor-pointer group/date">
+                  <div className="relative flex-shrink-0 flex items-center gap-1.5 px-1.5 py-0.5 rounded hover:bg-bg transition-colors cursor-pointer">
                     <span
                       className={`text-xs ${
-                        isPast(todo.dueDate)
-                          ? "text-danger font-medium"
-                          : "text-text-muted"
+                        isPast(todo.dueDate) ? "text-danger font-medium" : "text-text-muted"
                       }`}
                     >
                       {new Date(todo.dueDate + "T00:00:00").toLocaleDateString(
                         "en-US",
-                        { month: "short", day: "numeric" },
+                        { month: "short", day: "numeric" }
                       )}
                     </span>
                     <input
                       type="date"
                       value={todo.dueDate || ""}
-                      onChange={(e) => updateTodoDate(todo.id, e.target.value)}
+                      onChange={(e) => updateDueDate({ id: todo.id, dueDate: e.target.value })}
                       className="absolute inset-0 opacity-0 cursor-pointer"
                     />
                   </div>
@@ -286,16 +324,14 @@ export default function TodoSpace() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {/* Split/Add Subtask Button */}
                   <button
-                    onClick={() => addSubtask(todo.id)}
+                    onClick={() => addSubtask({ parentId: todo.id, title: "" })}
                     className="flex-shrink-0 p-1 hover:bg-bg text-text-muted hover:text-primary transition-all"
                     title="Add subtask"
                   >
                     <Scissors size={14} />
                   </button>
 
-                  {/* Delete Button */}
                   <button
                     onClick={() => deleteTodo(todo.id)}
                     className="flex-shrink-0 p-1 hover:bg-bg text-text-muted hover:text-danger transition-all"
@@ -308,13 +344,18 @@ export default function TodoSpace() {
               {/* Subtasks */}
               {todo.subtasks.length > 0 && (
                 <div className="ml-8 space-y-1">
-                  {todo.subtasks.map((subtask) => (
+                  {todo.subtasks.map((subtask, index) => (
                     <div
-                      key={subtask.id}
+                      key={index}
                       className="group/sub flex items-center gap-3 bg-bg border border-border-muted px-3 py-1.5 hover:border-border transition-colors"
                     >
                       <button
-                        onClick={() => toggleSubtask(todo.id, subtask.id)}
+                        onClick={() =>
+                          toggleSubtask({
+                            parentId: todo.id,
+                            subtaskIndex: index,
+                          })
+                        }
                         className={`flex-shrink-0 w-4 h-4 border rounded transition-colors flex items-center justify-center ${
                           subtask.completed
                             ? "bg-primary border-primary"
@@ -322,25 +363,15 @@ export default function TodoSpace() {
                         }`}
                       >
                         {subtask.completed && (
-                          <Check
-                            size={10}
-                            className="text-bg-light"
-                            strokeWidth={3}
-                          />
+                          <Check size={10} className="text-bg-light" strokeWidth={3} />
                         )}
                       </button>
 
-                      {editingSubtaskId === subtask.id ? (
+                      {editingSubtaskId === `${todo.id}-${index}` ? (
                         <input
                           type="text"
-                          value={subtask.text}
-                          onChange={(e) =>
-                            updateSubtaskText(
-                              todo.id,
-                              subtask.id,
-                              e.target.value,
-                            )
-                          }
+                          value={subtask.title}
+                          onChange={() => {}}
                           onBlur={() => setEditingSubtaskId(null)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") setEditingSubtaskId(null);
@@ -351,19 +382,24 @@ export default function TodoSpace() {
                         />
                       ) : (
                         <span
-                          onClick={() => setEditingSubtaskId(subtask.id)}
+                          onClick={() => setEditingSubtaskId(`${todo.id}-${index}`)}
                           className={`flex-1 text-xs transition-all cursor-text ${
                             subtask.completed
                               ? "text-text-muted line-through"
                               : "text-text-muted"
                           }`}
                         >
-                          {subtask.text || "Type here..."}
+                          {subtask.title || "Type here..."}
                         </span>
                       )}
 
                       <button
-                        onClick={() => deleteSubtask(todo.id, subtask.id)}
+                        onClick={() =>
+                          deleteSubtask({
+                            parentId: todo.id,
+                            subtaskIndex: index,
+                          })
+                        }
                         className="flex-shrink-0 opacity-0 group-hover/sub:opacity-100 p-1 hover:bg-bg text-text-muted hover:text-danger transition-all"
                       >
                         <X size={12} />

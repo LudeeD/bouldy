@@ -1,14 +1,12 @@
 export interface Subtask {
-  id: string;
-  text: string;
+  title: string;
   completed: boolean;
 }
 
 export interface TodoItem {
-  id: string;
-  text: string;
+  id: number;
+  title: string;
   completed: boolean;
   dueDate?: string;
   subtasks: Subtask[];
-  isExpanded: boolean;
 }

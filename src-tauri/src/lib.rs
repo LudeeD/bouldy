@@ -5,6 +5,7 @@ use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_store::StoreExt;
 
+mod todos;
 mod watcher;
 
 #[derive(Serialize, Deserialize)]
@@ -72,7 +73,7 @@ async fn save_vault_path(app: tauri::AppHandle, path: String) -> Result<(), Stri
 }
 
 #[tauri::command]
-async fn get_vault_path(app: tauri::AppHandle) -> Result<Option<String>, String> {
+fn get_vault_path(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let store = app.store("settings.json").map_err(|e| e.to_string())?;
 
     Ok(store
@@ -240,22 +241,180 @@ async fn delete_note(app: AppHandle, vault_path: String, path: String) -> Result
 }
 
 #[tauri::command]
-async fn read_todos(vault_path: String) -> Result<String, String> {
-    let todo_path = Path::new(&vault_path).join("todo.txt");
-
-    if !todo_path.exists() {
-        // Return empty string if file doesn't exist yet
-        return Ok(String::new());
-    }
-
-    fs::read_to_string(&todo_path).map_err(|e| format!("Failed to read todos: {}", e))
+async fn load_todos(vault_path: String) -> Result<Vec<todos::TodoItem>, String> {
+    todos::load_todos(&vault_path)
 }
 
 #[tauri::command]
-async fn write_todos(vault_path: String, content: String) -> Result<(), String> {
-    let todo_path = Path::new(&vault_path).join("todo.txt");
+async fn create_todo(
+    app: AppHandle,
+    vault_path: String,
+    title: String,
+    due_date: Option<String>,
+) -> Result<todos::TodoItem, String> {
+    let mut todos_list = todos::load_todos(&vault_path)?;
 
-    fs::write(&todo_path, content).map_err(|e| format!("Failed to write todos: {}", e))
+    let new_todo = todos::TodoItem {
+        id: todos_list.len() + 1, // Use line number as ID
+        title,
+        completed: false,
+        due_date,
+        subtasks: Vec::new(),
+    };
+
+    todos_list.push(new_todo.clone());
+    todos::save_todos(&vault_path, &todos_list)?;
+
+    // Emit event for external change detection
+    let _ = app.emit("todos_changed", ());
+
+    Ok(new_todo)
+}
+
+#[tauri::command]
+async fn update_todo(
+    app: AppHandle,
+    vault_path: String,
+    id: usize,
+    title: String,
+) -> Result<todos::TodoItem, String> {
+    let mut todos_list = todos::load_todos(&vault_path)?;
+
+    let todo = todos::find_todo_mut(&mut todos_list, id)
+        .ok_or_else(|| format!("Todo not found: {}", id))?;
+
+    todo.title = title;
+    let result = todo.clone();
+
+    todos::save_todos(&vault_path, &todos_list)?;
+    let _ = app.emit("todos_changed", ());
+
+    Ok(result)
+}
+
+#[tauri::command]
+async fn delete_todo(app: AppHandle, vault_path: String, id: usize) -> Result<(), String> {
+    let mut todos_list = todos::load_todos(&vault_path)?;
+
+    todos_list.retain(|t| t.id != id);
+
+    todos::save_todos(&vault_path, &todos_list)?;
+    let _ = app.emit("todos_changed", ());
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn toggle_todo(
+    app: AppHandle,
+    vault_path: String,
+    id: usize,
+) -> Result<todos::TodoItem, String> {
+    let mut todos_list = todos::load_todos(&vault_path)?;
+
+    let todo = todos::find_todo_mut(&mut todos_list, id)
+        .ok_or_else(|| format!("Todo not found: {}", id))?;
+
+    todo.completed = !todo.completed;
+    let result = todo.clone();
+
+    todos::save_todos(&vault_path, &todos_list)?;
+    let _ = app.emit("todos_changed", ());
+
+    Ok(result)
+}
+
+#[tauri::command]
+async fn update_todo_due_date(
+    app: AppHandle,
+    vault_path: String,
+    id: usize,
+    due_date: Option<String>,
+) -> Result<todos::TodoItem, String> {
+    let mut todos_list = todos::load_todos(&vault_path)?;
+
+    let todo = todos::find_todo_mut(&mut todos_list, id)
+        .ok_or_else(|| format!("Todo not found: {}", id))?;
+
+    todo.due_date = due_date;
+    let result = todo.clone();
+
+    todos::save_todos(&vault_path, &todos_list)?;
+    let _ = app.emit("todos_changed", ());
+
+    Ok(result)
+}
+
+#[tauri::command]
+async fn add_subtask(
+    app: AppHandle,
+    vault_path: String,
+    parent_id: usize,
+    title: String,
+) -> Result<todos::TodoItem, String> {
+    let mut todos_list = todos::load_todos(&vault_path)?;
+
+    let todo = todos::find_todo_mut(&mut todos_list, parent_id)
+        .ok_or_else(|| format!("Todo not found: {}", parent_id))?;
+
+    let subtask = todos::Subtask {
+        title,
+        completed: false,
+    };
+
+    todo.subtasks.push(subtask);
+    let result = todo.clone();
+
+    todos::save_todos(&vault_path, &todos_list)?;
+    let _ = app.emit("todos_changed", ());
+
+    Ok(result)
+}
+
+#[tauri::command]
+async fn delete_subtask(
+    app: AppHandle,
+    vault_path: String,
+    parent_id: usize,
+    subtask_index: usize,
+) -> Result<todos::TodoItem, String> {
+    let mut todos_list = todos::load_todos(&vault_path)?;
+
+    let todo = todos::find_todo_mut(&mut todos_list, parent_id)
+        .ok_or_else(|| format!("Todo not found: {}", parent_id))?;
+
+    if subtask_index < todo.subtasks.len() {
+        todo.subtasks.remove(subtask_index);
+    }
+    let result = todo.clone();
+
+    todos::save_todos(&vault_path, &todos_list)?;
+    let _ = app.emit("todos_changed", ());
+
+    Ok(result)
+}
+
+#[tauri::command]
+async fn toggle_subtask(
+    app: AppHandle,
+    vault_path: String,
+    parent_id: usize,
+    subtask_index: usize,
+) -> Result<todos::TodoItem, String> {
+    let mut todos_list = todos::load_todos(&vault_path)?;
+
+    let todo = todos::find_todo_mut(&mut todos_list, parent_id)
+        .ok_or_else(|| format!("Todo not found: {}", parent_id))?;
+
+    if let Some(subtask) = todos::find_subtask_mut(todo, subtask_index) {
+        subtask.completed = !subtask.completed;
+    }
+    let result = todo.clone();
+
+    todos::save_todos(&vault_path, &todos_list)?;
+    let _ = app.emit("todos_changed", ());
+
+    Ok(result)
 }
 
 #[tauri::command]
@@ -426,7 +585,9 @@ async fn list_prompts(vault_path: String) -> Result<Vec<Prompt>, String> {
         if path.extension().and_then(|s| s.to_str()) == Some("md") {
             match extract_prompt_metadata(&path) {
                 Ok(prompt) => prompts.push(prompt),
-                Err(e) => eprintln!("Failed to parse prompt {}: {}", path.display(), e),
+                Err(_) => {
+                    // Skip invalid prompts silently
+                }
             }
         }
     }
@@ -539,30 +700,22 @@ async fn track_prompt_usage(_app: AppHandle, vault_path: String, id: String) -> 
 
 #[tauri::command]
 async fn get_saved_theme(app: tauri::AppHandle) -> Result<String, String> {
-    eprintln!("[RUST] get_saved_theme called");
     match app.store("settings.json") {
         Ok(store) => {
-            eprintln!("[RUST] Store loaded successfully");
-            // Store exists, try to get theme
             match store.get("theme") {
                 Some(v) => {
                     if let Some(theme_str) = v.as_str() {
-                        eprintln!("[RUST] get_saved_theme: Found theme = '{}'", theme_str);
                         Ok(theme_str.to_string())
                     } else {
-                        eprintln!("[RUST] get_saved_theme: theme value is not a string, value: {:?}", v);
                         Ok("midnight".to_string())
                     }
                 }
                 None => {
-                    eprintln!("[RUST] get_saved_theme: No 'theme' key in store, returning default midnight");
                     Ok("midnight".to_string())
                 }
             }
         }
-        Err(e) => {
-            eprintln!("[RUST] get_saved_theme: Store load error: {}", e);
-            eprintln!("[RUST] This is normal on first run when no settings.json exists yet");
+        Err(_) => {
             Ok("midnight".to_string())
         }
     }
@@ -570,42 +723,37 @@ async fn get_saved_theme(app: tauri::AppHandle) -> Result<String, String> {
 
 #[tauri::command]
 async fn log_startup_metrics(
-    theme_init_ms: f64,
-    react_mount_ms: f64,
-    total_ms: f64,
-    first_paint_ms: Option<f64>,
+    _theme_init_ms: f64,
+    _react_mount_ms: f64,
+    _total_ms: f64,
+    _first_paint_ms: Option<f64>,
 ) -> Result<(), String> {
-    let theme_pct = (theme_init_ms / total_ms * 100.0).round();
-    let react_pct = (react_mount_ms / total_ms * 100.0).round();
-
-    println!("⚡ STARTUP METRICS");
-    println!("  Theme Init:  {}ms ({}%)", theme_init_ms, theme_pct);
-    println!("  React Mount: {}ms ({}%)", react_mount_ms, react_pct);
-    println!("  Total:       {}ms", total_ms);
-    if let Some(fcp) = first_paint_ms {
-        println!("  First Paint: {}ms", fcp);
-    }
-
-    // Performance assessment
-    if total_ms > 1000.0 {
-        eprintln!("  ⚠️ Slow startup - check for blocking operations");
-    } else if total_ms > 500.0 {
-        println!("  ✓ Acceptable startup");
-    } else {
-        println!("  ✨ Fast startup");
-    }
-
+    // Metrics logging disabled in production
     Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_store::Builder::new().build())
+        .setup(|app| {
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_autostart::ManagerExt;
+
+                // Get the autostart manager
+                let autostart_manager = app.autolaunch();
+                // Enable autostart
+                let _ = autostart_manager.enable();
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             select_vault_folder,
             save_vault_path,
@@ -615,8 +763,15 @@ pub fn run() {
             read_note,
             write_note,
             delete_note,
-            read_todos,
-            write_todos,
+            load_todos,
+            create_todo,
+            update_todo,
+            delete_todo,
+            toggle_todo,
+            update_todo_due_date,
+            add_subtask,
+            delete_subtask,
+            toggle_subtask,
             read_pomodoros,
             write_pomodoros,
             migrate_vault_structure,

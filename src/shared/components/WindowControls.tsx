@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Minus, PictureInPicture2, X } from "lucide-react";
 
 export default function WindowControls() {
   const handleMinimize = async () => {
@@ -20,39 +21,26 @@ export default function WindowControls() {
     <div className="flex items-center gap-1">
       <button
         onClick={handleMinimize}
-        className="w-10 h-10 flex items-center justify-center hover:bg-highlight transition-colors text-primary"
+        className="w-10 h-10 rounded flex items-center justify-center transition-colors text-text-muted hover:bg-highlight hover:text-primary"
         aria-label="Minimize"
       >
-        <svg width="10" height="2" viewBox="0 0 10 2" fill="none">
-          <rect width="10" height="2" fill="currentColor" />
-        </svg>
+        <Minus size={16} />
       </button>
 
       <button
         onClick={handleMaximize}
-        className="w-10 h-10 flex items-center justify-center hover:bg-highlight transition-colors text-primary"
+        className="w-10 h-10 rounded flex items-center justify-center transition-colors text-text-muted hover:bg-highlight hover:text-primary"
         aria-label="Maximize"
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <rect
-            x="0.5"
-            y="0.5"
-            width="9"
-            height="9"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          />
-        </svg>
+        <PictureInPicture2 size={16} style={{ transform: "scaleX(-1)" }} />
       </button>
 
       <button
         onClick={handleClose}
-        className="w-10 h-10 flex items-center justify-center hover:bg-danger hover:text-white transition-colors text-primary"
+        className="w-10 h-10 rounded flex items-center justify-center transition-colors text-text-muted hover:bg-danger hover:text-white"
         aria-label="Close"
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path d="M1 1L9 9M9 1L1 9" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
+        <X size={16} />
       </button>
     </div>
   );

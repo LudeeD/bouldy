@@ -100,9 +100,9 @@ export default function PromptsPanel() {
     setViewMode("view");
   };
 
-  const handleCopy = (content: string) => {
-    console.log("Copied:", content);
-  };
+   const handleCopy = () => {
+     // Copy action handled by PromptViewer component
+   };
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>

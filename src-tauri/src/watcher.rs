@@ -76,6 +76,7 @@ pub fn setup_watcher(
     let vault = PathBuf::from(&vault_path);
     let notes_dir = vault.join("notes");
     let prompts_dir = vault.join("prompts");
+    let todo_file = vault.join("todo.txt");
 
     if !notes_dir.exists() {
         return Err("Notes directory does not exist".to_string());
@@ -90,6 +91,7 @@ pub fn setup_watcher(
     let app_clone = Arc::new(app);
     let notes_dir_clone = notes_dir.clone();
     let prompts_dir_clone = prompts_dir.clone();
+    let todo_file_clone = todo_file.clone();
 
     let mut debouncer = new_debouncer(
         Duration::from_millis(500),
@@ -98,9 +100,24 @@ pub fn setup_watcher(
             match result {
                 Ok(events) => {
                     let mut should_update_note_list = false;
+                    let mut should_update_todos = false;
 
                     for event in events {
                         for path in &event.paths {
+                            // Check if this is the todo.txt file
+                            if path == &todo_file_clone {
+                                match event.kind {
+                                    notify::EventKind::Modify(_) => {
+                                        should_update_todos = true;
+                                    }
+                                    notify::EventKind::Create(_) => {
+                                        should_update_todos = true;
+                                    }
+                                    _ => {}
+                                }
+                                continue;
+                            }
+
                             // Only process .md files
                             if path.extension().and_then(|s| s.to_str()) != Some("md") {
                                 continue;
@@ -146,22 +163,28 @@ pub fn setup_watcher(
                         }
                     }
 
-                    // Emit full list update if any changes occurred
+                    // Emit full list update if any notes changed
                     if should_update_note_list {
                         emit_note_list_updated(&app_clone, &notes_dir_clone);
                     }
-                }
-                Err(errors) => {
-                    for error in errors {
-                        eprintln!("File watcher error: {:?}", error);
+
+                    // Emit todos changed event if todo.txt was modified
+                    if should_update_todos {
+                        let _ = app_clone.emit("todos_changed", ());
                     }
+                }
+                Err(_errors) => {
+                    // File watcher errors are silently ignored in production
                 }
             }
         },
     )
     .map_err(|e| format!("Failed to create debouncer: {}", e))?;
 
-    // Watch both directories
+    // Watch all directories and vault root for todo.txt
+    debouncer
+        .watch(&vault, RecursiveMode::NonRecursive)
+        .map_err(|e| format!("Failed to watch vault directory: {}", e))?;
     debouncer
         .watch(&notes_dir, RecursiveMode::NonRecursive)
         .map_err(|e| format!("Failed to watch notes directory: {}", e))?;

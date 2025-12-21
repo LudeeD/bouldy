@@ -2,10 +2,11 @@ import "./styles/App.css";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Store } from "@tauri-apps/plugin-store";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Editor } from "./features/editor";
 import { VaultSelector } from "./features/vault";
 import { WindowControls, Home, Sidebar } from "./shared";
-import { TodoSpace, TodosProvider, useTodos } from "./features/todos";
+import TodoSpace from "./features/todos/TodoSpace";
 import { CalendarView } from "./features/calendar";
 import { SettingsPanel } from "./features/settings";
 import { PromptsPanel, PromptsProvider } from "./features/prompts";
@@ -22,7 +23,6 @@ interface AppContentProps {
 }
 
 function AppContent({ onResetVault, vaultPath }: AppContentProps) {
-  const { loadTodos } = useTodos();
   const { loadSessions } = usePomodoro();
   // Get initial theme from DOM (pre-initialized in index.html)
   const [currentTheme, setCurrentTheme] = useState<string>(() => {
@@ -46,36 +46,33 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
   // Track which side was last interacted with (default to left)
   const [mruSide, setMruSide] = useState<"left" | "right">("left");
 
-   // Initialize store and load saved theme
-   useEffect(() => {
-     const initStore = async () => {
-       const newStore = await Store.load("settings.json");
-       setStore(newStore);
+  // Initialize store and load saved theme
+  useEffect(() => {
+    const initStore = async () => {
+      const newStore = await Store.load("settings.json");
+      setStore(newStore);
 
        // Load saved theme - always apply it if it exists
        const savedTheme = await newStore.get<string>("theme");
-       console.log('[APP] Store initialized, savedTheme:', savedTheme);
-       console.log('[APP] currentTheme from DOM:', currentTheme);
-       
+
        if (savedTheme) {
-         console.log('[APP] Setting saved theme:', savedTheme);
          setCurrentTheme(savedTheme);
        }
-     };
-     initStore();
-   }, [currentTheme]);
+    };
+    initStore();
+  }, [currentTheme]);
 
-   // Apply theme and save to store when it changes
-   useEffect(() => {
-     const root = window.document.documentElement;
-     root.setAttribute("data-theme", currentTheme);
+  // Apply theme and save to store when it changes
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.setAttribute("data-theme", currentTheme);
 
-     // Save theme to store
-     if (store) {
-       store.set("theme", currentTheme);
-       store.save();
-     }
-   }, [currentTheme, store]);
+    // Save theme to store
+    if (store) {
+      store.set("theme", currentTheme);
+      store.save();
+    }
+  }, [currentTheme, store]);
 
   // Track screen width for responsive layout
   // Only enable single-panel mode if BOTH panels are open AND screen is narrow
@@ -91,7 +88,7 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
     return () => window.removeEventListener("resize", handleResize);
   }, [panels.left, panels.right]);
 
-  // Initialize vault watcher and load todos
+  // Initialize vault watcher
   useEffect(() => {
     const initVault = async () => {
       try {
@@ -103,9 +100,8 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
     };
 
     initVault();
-    loadTodos();
     loadSessions();
-  }, [vaultPath, loadTodos, loadSessions]);
+  }, [vaultPath, loadSessions]);
 
   const activatePanel = (type: PanelType) => {
     setPanels((prev) => {
@@ -168,7 +164,7 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
       case "editor":
         return <Editor />;
       case "todos":
-        return <TodoSpace />;
+        return <TodoSpace vaultPath={vaultPath} />;
       case "calendar":
         return <CalendarView />;
       case "settings":
@@ -288,20 +284,20 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
       {/* Left icon sidebar */}
       <Sidebar activePanels={visiblePanels} onOpenPanel={activatePanel} />
 
-       {/* Main content area */}
-       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Top bar - smaller, cleaner */}
-        <div
-          data-tauri-drag-region
-          className="flex items-center justify-between px-4 h-12 cursor-move bg-bg-dark relative"
-        >
-          <div className="text-xs text-primary font-mono min-w-0 truncate">
-            {vaultPath}
-          </div>
-          <div className="flex-shrink-0">
-            <WindowControls />
-          </div>
-        </div>
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+       {/* Top bar - smaller, cleaner */}
+         <div
+           data-tauri-drag-region
+            className="flex items-center justify-between px-4 h-9 cursor-move bg-bg-dark relative"
+          >
+           <div className="text-xs text-primary font-mono min-w-0 truncate">
+             {vaultPath}
+           </div>
+           <div className="flex-shrink-0">
+             <WindowControls />
+           </div>
+         </div>
 
         {/* Content: Two slots */}
         <div className="flex-1 flex overflow-hidden bg-dots  rounded-tl-lg">
@@ -337,6 +333,7 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
 function App() {
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [queryClient] = useState(() => new QueryClient());
 
   useEffect(() => {
     // Check if a vault is already configured
@@ -380,7 +377,7 @@ function App() {
   }
 
   return (
-    <TodosProvider vaultPath={vaultPath}>
+    <QueryClientProvider client={queryClient}>
       <PromptsProvider vaultPath={vaultPath}>
         <PomodoroProvider vaultPath={vaultPath}>
           <AppContent
@@ -389,7 +386,7 @@ function App() {
           />
         </PomodoroProvider>
       </PromptsProvider>
-    </TodosProvider>
+    </QueryClientProvider>
   );
 }
 

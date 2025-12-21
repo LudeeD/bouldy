@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   FileText,
   CheckSquare,
@@ -31,19 +32,31 @@ interface SidebarButtonProps {
 }
 
 function SidebarButton({ icon, label, isActive, onClick }: SidebarButtonProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
   return (
-    <button
-      onClick={onClick}
-      className={`w-10 h-10 rounded flex items-center justify-center transition-colors ${
-        isActive
-          ? "text-primary bg-highlight"
-          : "text-text-muted hover:bg-highlight hover:text-primary"
-      }`}
-      aria-label={label}
-      title={label}
-    >
-      {icon}
-    </button>
+    <div className="relative group">
+      <button
+        onClick={onClick}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        className={`w-10 h-10 rounded flex items-center justify-center transition-colors ${
+          isActive
+            ? "text-primary bg-highlight"
+            : "text-text-muted hover:bg-highlight hover:text-primary"
+        }`}
+        aria-label={label}
+      >
+        {icon}
+      </button>
+
+      {showTooltip && (
+        <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 bg-bg-light text-primary px-2 py-1 rounded text-sm whitespace-nowrap z-50 pointer-events-none">
+          {label}
+          <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-bg-light" />
+        </div>
+      )}
+    </div>
   );
 }
 
