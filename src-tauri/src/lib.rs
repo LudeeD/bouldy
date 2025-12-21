@@ -720,18 +720,6 @@ async fn get_saved_theme(app: tauri::AppHandle) -> Result<String, String> {
         }
     }
 }
-
-#[tauri::command]
-async fn log_startup_metrics(
-    _theme_init_ms: f64,
-    _react_mount_ms: f64,
-    _total_ms: f64,
-    _first_paint_ms: Option<f64>,
-) -> Result<(), String> {
-    // Metrics logging disabled in production
-    Ok(())
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -781,8 +769,7 @@ pub fn run() {
             write_prompt,
             delete_prompt,
             track_prompt_usage,
-            get_saved_theme,
-            log_startup_metrics
+            get_saved_theme
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
