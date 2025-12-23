@@ -1,13 +1,21 @@
 import { useState, useEffect } from "react";
 import { Save, X as XIcon } from "lucide-react";
-import { PromptMetadata } from "../../../types/prompt";
-import { extractVariables } from "../utils/variable-extractor";
 
 interface PromptEditorProps {
-  initialData?: PromptMetadata;
-  onSave: (
-    metadata: Omit<PromptMetadata, "useCount" | "lastUsed">,
-  ) => Promise<void>;
+  initialData?: {
+    title: string;
+    content: string;
+    tags?: string[];
+    category?: string;
+    variables?: string[];
+  };
+  onSave: (data: {
+    title: string;
+    content: string;
+    tags?: string[];
+    category?: string;
+    variables?: string[];
+  }) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -28,11 +36,9 @@ export default function PromptEditor({
       setTitle(initialData.title);
       setContent(initialData.content);
       setCategory(initialData.category || "");
-      setTags(initialData.tags);
+      setTags(initialData.tags || []);
     }
   }, [initialData]);
-
-  const detectedVariables = extractVariables(content);
 
   const addTag = () => {
     const trimmed = tagInput.trim();
@@ -46,10 +52,13 @@ export default function PromptEditor({
     setTags(tags.filter((t) => t !== tag));
   };
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const handleSave = async () => {
     if (!title.trim() || !content.trim()) return;
 
     setIsSaving(true);
+    setSaveError(null);
 
     try {
       await onSave({
@@ -57,10 +66,11 @@ export default function PromptEditor({
         content: content.trim(),
         category: category.trim() || undefined,
         tags,
-        variables: detectedVariables,
       });
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
       console.error("Failed to save prompt:", error);
+      setSaveError(errorMsg);
     } finally {
       setIsSaving(false);
     }
@@ -91,6 +101,11 @@ export default function PromptEditor({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {saveError && (
+          <div className="p-2 bg-danger text-white text-xs rounded">
+            Error: {saveError}
+          </div>
+        )}
         <div>
           <label className="block text-xs text-text-muted mb-1">
             Title <span className="text-danger">*</span>
@@ -170,26 +185,6 @@ export default function PromptEditor({
             rows={12}
           />
         </div>
-
-        {detectedVariables.length > 0 && (
-          <div className="p-2 bg-highlight border border-border-muted">
-            <div className="text-xs text-text-muted mb-1">
-              Detected Variables
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {detectedVariables.map((variable) => (
-                <span
-                  key={variable}
-                  className="px-1.5 py-0.5 text-xs bg-bg border border-border-muted text-primary font-mono"
-                >
-                  {"{{"}
-                  {variable}
-                  {"}}"}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

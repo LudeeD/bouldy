@@ -1,29 +1,156 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, ArrowLeft, Search } from "lucide-react";
-import { usePrompts } from "../context/PromptsContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { Prompt } from "../../../types/prompt";
 import PromptItem from "./PromptItem";
 import PromptEditor from "./PromptEditor";
 import PromptViewer from "./PromptViewer";
 import TagFilter from "./TagFilter";
-import { PromptMetadata } from "../../../types/prompt";
 
 type ViewMode = "list" | "create" | "edit" | "view";
 
-export default function PromptsPanel() {
+interface PromptsPanelProps {
+  vaultPath: string;
+}
+
+interface PromptInput {
+  title: string;
+  content: string;
+  tags?: string[];
+  category?: string;
+  variables?: string[];
+}
+
+// Query key for prompts
+const PROMPTS_QUERY_KEY = ["prompts"];
+
+// Hook to use prompts with TanStack Query
+function usePromptsQuery(vaultPath: string) {
+  const queryClient = useQueryClient();
+
+  // Main query for fetching prompts
+  const promptsQuery = useQuery({
+    queryKey: [...PROMPTS_QUERY_KEY, vaultPath],
+    queryFn: async () => invoke<Prompt[]>("list_prompts", { vaultPath }),
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+  });
+
+  // Listen for external changes
+  useEffect(() => {
+    const setupListeners = async () => {
+      const unlisteners: (() => void)[] = [];
+
+      unlisteners.push(
+        await listen<Prompt>("prompt:saved", () => {
+          queryClient.invalidateQueries({
+            queryKey: [...PROMPTS_QUERY_KEY, vaultPath],
+          });
+        })
+      );
+
+      unlisteners.push(
+        await listen<{ path: string; id: string }>("prompt:deleted", () => {
+          queryClient.invalidateQueries({
+            queryKey: [...PROMPTS_QUERY_KEY, vaultPath],
+          });
+        })
+      );
+
+      return unlisteners;
+    };
+
+    let unlisteners: (() => void)[] = [];
+    setupListeners().then((fns) => {
+      unlisteners = fns;
+    });
+
+    return () => {
+      unlisteners.forEach((unlisten) => unlisten());
+    };
+  }, [vaultPath, queryClient]);
+
+  const createPromptMutation = useMutation({
+    mutationFn: async (input: PromptInput) => {
+      const id = Date.now().toString();
+      return invoke<Prompt>("write_prompt", {
+        vaultPath,
+        id,
+        input: {
+          title: input.title,
+          content: input.content,
+          tags: input.tags || [],
+          category: input.category,
+          variables: input.variables || [],
+        },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...PROMPTS_QUERY_KEY, vaultPath] });
+    },
+  });
+
+  const updatePromptMutation = useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: PromptInput }) => {
+      return invoke<Prompt>("write_prompt", {
+        vaultPath,
+        id,
+        input: {
+          title: input.title,
+          content: input.content,
+          tags: input.tags || [],
+          category: input.category,
+          variables: input.variables || [],
+        },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...PROMPTS_QUERY_KEY, vaultPath] });
+    },
+  });
+
+  const deletePromptMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return invoke("delete_prompt", { vaultPath, id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...PROMPTS_QUERY_KEY, vaultPath] });
+    },
+  });
+
+  const trackUsageMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return invoke("track_prompt_usage", { vaultPath, id });
+    },
+  });
+
+  return {
+    prompts: promptsQuery.data ?? [],
+    isLoading: promptsQuery.isLoading,
+    error: promptsQuery.error,
+    createPrompt: createPromptMutation.mutateAsync,
+    updatePrompt: updatePromptMutation.mutateAsync,
+    deletePrompt: deletePromptMutation.mutate,
+    trackUsage: trackUsageMutation.mutate,
+  };
+}
+
+export default function PromptsPanel({ vaultPath }: PromptsPanelProps) {
   const {
     prompts,
-    selectedPrompt,
     isLoading,
-    selectPrompt,
     createPrompt,
     updatePrompt,
     trackUsage,
-  } = usePrompts();
+  } = usePromptsQuery(vaultPath);
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
@@ -70,8 +197,11 @@ export default function PromptsPanel() {
   };
 
   const handleSelectPrompt = (id: string) => {
-    selectPrompt(id);
-    setViewMode("view");
+    const prompt = prompts.find((p) => p.id === id);
+    if (prompt) {
+      setSelectedPrompt(prompt);
+      setViewMode("view");
+    }
   };
 
   const handleEdit = () => {
@@ -83,26 +213,34 @@ export default function PromptsPanel() {
     setSearchQuery("");
   };
 
-  const handleSaveNew = async (
-    metadata: Omit<PromptMetadata, "useCount" | "lastUsed">,
-  ) => {
-    const prompt = await createPrompt(metadata);
-    selectPrompt(prompt.id);
+  const handleSaveNew = async (data: {
+    title: string;
+    content: string;
+    tags?: string[];
+    category?: string;
+    variables?: string[];
+  }) => {
+    const prompt = await createPrompt(data);
+    setSelectedPrompt(prompt);
     setViewMode("view");
   };
 
-  const handleSaveEdit = async (
-    metadata: Omit<PromptMetadata, "useCount" | "lastUsed">,
-  ) => {
+  const handleSaveEdit = async (data: {
+    title: string;
+    content: string;
+    tags?: string[];
+    category?: string;
+    variables?: string[];
+  }) => {
     if (!selectedPrompt) return;
-    const prompt = await updatePrompt(selectedPrompt.id, metadata);
-    selectPrompt(prompt.id);
+    const prompt = await updatePrompt({ id: selectedPrompt.id, input: data });
+    setSelectedPrompt(prompt);
     setViewMode("view");
   };
 
-   const handleCopy = () => {
-     // Copy action handled by PromptViewer component
-   };
+  const handleCopy = () => {
+    // Copy action handled by PromptViewer component
+  };
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -134,8 +272,6 @@ export default function PromptsPanel() {
             tags: selectedPrompt.tags,
             category: selectedPrompt.category,
             variables: selectedPrompt.variables,
-            lastUsed: selectedPrompt.lastUsed,
-            useCount: selectedPrompt.useCount,
           }}
           onSave={handleSaveEdit}
           onCancel={handleBackToList}

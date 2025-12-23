@@ -2,8 +2,19 @@ import { useState } from "react";
 import { Copy, Edit, ExternalLink, Check, ArrowLeft } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Prompt } from "../../../types/prompt";
-import { replaceVariables } from "../utils/variable-extractor";
 import VariableForm from "./VariableForm";
+
+// Replace {{variableName}} with values from the variableValues object
+function replaceVariables(
+  content: string,
+  variables: Record<string, string>
+): string {
+  let result = content;
+  for (const [key, value] of Object.entries(variables)) {
+    result = result.replace(new RegExp(`{{${key}}}`, "g"), value);
+  }
+  return result;
+}
 
 interface PromptViewerProps {
   prompt: Prompt;
