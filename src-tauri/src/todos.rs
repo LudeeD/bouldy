@@ -28,28 +28,29 @@ pub fn parse_todos(content: &str) -> Result<Vec<TodoItem>, String> {
     let mut current_parent: Option<usize> = None;
     let mut line_num = 0;
 
-    for line in content.lines() {
-        line_num += 1;
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
+     for line in content.lines() {
+         line_num += 1;
+         if line.trim().is_empty() {
+             continue;
+         }
 
-        if line.starts_with("  - ") || line.starts_with("  x ") {
-            // This is a subtask
-            if let Some(parent_idx) = current_parent {
-                if let Ok(subtask) = parse_subtask_line(line) {
-                    todos[parent_idx].subtasks.push(subtask);
-                }
-            }
-        } else {
-            // This is a todo item
-            if let Ok(todo) = parse_todo_line(line, line_num) {
-                current_parent = Some(todos.len());
-                todos.push(todo);
-            }
-        }
-    }
+         // Check if it's a subtask BEFORE trimming
+         if line.starts_with("  - ") || line.starts_with("  x ") {
+             // This is a subtask
+             if let Some(parent_idx) = current_parent {
+                 if let Ok(subtask) = parse_subtask_line(line) {
+                     todos[parent_idx].subtasks.push(subtask);
+                 }
+             }
+         } else {
+             // This is a todo item
+             let trimmed_line = line.trim();
+             if let Ok(todo) = parse_todo_line(trimmed_line, line_num) {
+                 current_parent = Some(todos.len());
+                 todos.push(todo);
+             }
+         }
+     }
 
     Ok(todos)
 }
@@ -138,7 +139,7 @@ pub fn serialize_todos(todos: &[TodoItem]) -> String {
         // Add subtasks
         for subtask in &todo.subtasks {
             let subtask_prefix = if subtask.completed { "x " } else { "" };
-            result.push_str(&format!("  - {}{}\n", subtask_prefix, subtask.title));
+            result.push_str(&format!("  {}- {}\n", subtask_prefix, subtask.title));
         }
     }
 

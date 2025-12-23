@@ -99,47 +99,59 @@ function useTodosQuery(vaultPath: string) {
     },
   });
 
-  const toggleSubtaskMutation = useMutation({
-    mutationFn: async ({ parentId, subtaskIndex }: { parentId: number; subtaskIndex: number }) => {
-      return invoke<TodoItem>("toggle_subtask", { vaultPath, parentId, subtaskIndex });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [...TODOS_QUERY_KEY, vaultPath] });
-    },
-  });
+   const toggleSubtaskMutation = useMutation({
+     mutationFn: async ({ parentId, subtaskIndex }: { parentId: number; subtaskIndex: number }) => {
+       return invoke<TodoItem>("toggle_subtask", { vaultPath, parentId, subtaskIndex });
+     },
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: [...TODOS_QUERY_KEY, vaultPath] });
+     },
+   });
 
-  return {
-    todos: todosQuery.data ?? [],
-    isLoading: todosQuery.isLoading,
-    error: todosQuery.error,
-    createTodo: createTodoMutation.mutate,
-    toggleTodo: toggleTodoMutation.mutate,
-    deleteTodo: deleteTodoMutation.mutate,
-    updateDueDate: updateDueDateMutation.mutate,
-    addSubtask: addSubtaskMutation.mutate,
-    deleteSubtask: deleteSubtaskMutation.mutate,
-    toggleSubtask: toggleSubtaskMutation.mutate,
-  };
+   const updateSubtaskTitleMutation = useMutation({
+     mutationFn: async ({ parentId, subtaskIndex, title }: { parentId: number; subtaskIndex: number; title: string }) => {
+       return invoke<TodoItem>("update_subtask_title", { vaultPath, parentId, subtaskIndex, title });
+     },
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: [...TODOS_QUERY_KEY, vaultPath] });
+     },
+   });
+
+   return {
+     todos: todosQuery.data ?? [],
+     isLoading: todosQuery.isLoading,
+     error: todosQuery.error,
+     createTodo: createTodoMutation.mutate,
+     toggleTodo: toggleTodoMutation.mutate,
+     deleteTodo: deleteTodoMutation.mutate,
+     updateDueDate: updateDueDateMutation.mutate,
+     addSubtask: addSubtaskMutation.mutate,
+     deleteSubtask: deleteSubtaskMutation.mutate,
+     toggleSubtask: toggleSubtaskMutation.mutate,
+     updateSubtaskTitle: updateSubtaskTitleMutation.mutate,
+   };
 }
 
 // Main component
 export default function TodoSpace({ vaultPath }: TodoSpaceProps) {
-  const {
-    todos,
-    isLoading,
-    createTodo,
-    toggleTodo,
-    deleteTodo,
-    updateDueDate,
-    addSubtask,
-    deleteSubtask,
-    toggleSubtask,
-  } = useTodosQuery(vaultPath);
+   const {
+     todos,
+     isLoading,
+     createTodo,
+     toggleTodo,
+     deleteTodo,
+     updateDueDate,
+     addSubtask,
+     deleteSubtask,
+     toggleSubtask,
+     updateSubtaskTitle,
+   } = useTodosQuery(vaultPath);
 
   const [newTodoText, setNewTodoText] = useState("");
-  const [newTodoDate, setNewTodoDate] = useState("");
-  const [activeTab, setActiveTab] = useState<"today" | "upcoming">("today");
-  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+   const [newTodoDate, setNewTodoDate] = useState("");
+   const [activeTab, setActiveTab] = useState<"today" | "upcoming">("today");
+   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+   const [editingSubtaskValue, setEditingSubtaskValue] = useState("");
 
   const getTodayString = () => {
     const today = new Date();
@@ -275,8 +287,8 @@ export default function TodoSpace({ vaultPath }: TodoSpaceProps) {
           </div>
         ) : (
           filteredTodos.map((todo) => (
-            <div key={todo.id} className="space-y-1">
-              <div className="group flex items-center gap-3 bg-bg-light border border-border-muted px-3 py-2 hover:border-border transition-colors">
+            <div key={todo.id} className="space-y-1 group/item">
+              <div className="flex items-center gap-3 bg-bg-light border border-border-muted px-3 py-2 group-hover/item:border-border transition-colors">
                 {/* Checkbox */}
                 <button
                   onClick={() => toggleTodo(todo.id)}
@@ -323,9 +335,9 @@ export default function TodoSpace({ vaultPath }: TodoSpaceProps) {
                 )}
 
                 {/* Actions */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
                   <button
-                    onClick={() => addSubtask({ parentId: todo.id, title: "" })}
+                    onClick={() => addSubtask({ parentId: todo.id, title: "New subtask" })}
                     className="flex-shrink-0 p-1 hover:bg-bg text-text-muted hover:text-primary transition-all"
                     title="Add subtask"
                   >
@@ -347,7 +359,7 @@ export default function TodoSpace({ vaultPath }: TodoSpaceProps) {
                   {todo.subtasks.map((subtask, index) => (
                     <div
                       key={index}
-                      className="group/sub flex items-center gap-3 bg-bg border border-border-muted px-3 py-1.5 hover:border-border transition-colors"
+                      className="group/sub flex items-center gap-3 bg-bg-light border border-border-muted px-3 py-2 hover:border-border transition-colors"
                     >
                       <button
                         onClick={() =>
@@ -367,31 +379,57 @@ export default function TodoSpace({ vaultPath }: TodoSpaceProps) {
                         )}
                       </button>
 
-                      {editingSubtaskId === `${todo.id}-${index}` ? (
-                        <input
-                          type="text"
-                          value={subtask.title}
-                          onChange={() => {}}
-                          onBlur={() => setEditingSubtaskId(null)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") setEditingSubtaskId(null);
-                            if (e.key === "Escape") setEditingSubtaskId(null);
-                          }}
-                          className="flex-1 text-xs bg-bg border border-primary px-1 focus:outline-none text-text"
-                          autoFocus
-                        />
-                      ) : (
-                        <span
-                          onClick={() => setEditingSubtaskId(`${todo.id}-${index}`)}
-                          className={`flex-1 text-xs transition-all cursor-text ${
-                            subtask.completed
-                              ? "text-text-muted line-through"
-                              : "text-text-muted"
-                          }`}
-                        >
-                          {subtask.title || "Type here..."}
-                        </span>
-                      )}
+                       {editingSubtaskId === `${todo.id}-${index}` ? (
+                         <input
+                           type="text"
+                           value={editingSubtaskValue}
+                           onChange={(e) => setEditingSubtaskValue(e.target.value)}
+                           onBlur={() => {
+                             if (editingSubtaskValue.trim()) {
+                               updateSubtaskTitle({
+                                 parentId: todo.id,
+                                 subtaskIndex: index,
+                                 title: editingSubtaskValue,
+                               });
+                             }
+                             setEditingSubtaskId(null);
+                             setEditingSubtaskValue("");
+                           }}
+                           onKeyDown={(e) => {
+                             if (e.key === "Enter") {
+                               if (editingSubtaskValue.trim()) {
+                                 updateSubtaskTitle({
+                                   parentId: todo.id,
+                                   subtaskIndex: index,
+                                   title: editingSubtaskValue,
+                                 });
+                               }
+                               setEditingSubtaskId(null);
+                               setEditingSubtaskValue("");
+                             }
+                             if (e.key === "Escape") {
+                               setEditingSubtaskId(null);
+                               setEditingSubtaskValue("");
+                             }
+                           }}
+                           className="flex-1 text-sm bg-bg border border-primary px-1 focus:outline-none text-text"
+                           autoFocus
+                         />
+                       ) : (
+                         <span
+                           onClick={() => {
+                             setEditingSubtaskId(`${todo.id}-${index}`);
+                             setEditingSubtaskValue(subtask.title);
+                           }}
+                           className={`flex-1 text-sm transition-all cursor-text ${
+                             subtask.completed
+                               ? "text-text-muted line-through"
+                               : "text-text"
+                           }`}
+                         >
+                           {subtask.title || "Type here..."}
+                         </span>
+                       )}
 
                       <button
                         onClick={() =>

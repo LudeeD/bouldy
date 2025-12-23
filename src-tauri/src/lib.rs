@@ -418,6 +418,30 @@ async fn toggle_subtask(
 }
 
 #[tauri::command]
+async fn update_subtask_title(
+    app: AppHandle,
+    vault_path: String,
+    parent_id: usize,
+    subtask_index: usize,
+    title: String,
+) -> Result<todos::TodoItem, String> {
+    let mut todos_list = todos::load_todos(&vault_path)?;
+
+    let todo = todos::find_todo_mut(&mut todos_list, parent_id)
+        .ok_or_else(|| format!("Todo not found: {}", parent_id))?;
+
+    if let Some(subtask) = todos::find_subtask_mut(todo, subtask_index) {
+        subtask.title = title;
+    }
+    let result = todo.clone();
+
+    todos::save_todos(&vault_path, &todos_list)?;
+    let _ = app.emit("todos_changed", ());
+
+    Ok(result)
+}
+
+#[tauri::command]
 async fn read_pomodoros(vault_path: String) -> Result<String, String> {
     let pomodoro_path = Path::new(&vault_path).join(".pomodoros.md");
 
@@ -757,9 +781,10 @@ pub fn run() {
             delete_todo,
             toggle_todo,
             update_todo_due_date,
-            add_subtask,
-            delete_subtask,
-            toggle_subtask,
+             add_subtask,
+             delete_subtask,
+             toggle_subtask,
+             update_subtask_title,
             read_pomodoros,
             write_pomodoros,
             migrate_vault_structure,
