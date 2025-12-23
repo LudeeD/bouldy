@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -22,6 +23,42 @@ struct NoteMetadata {
     content: String,
 }
 
+// The content of a prompt file - clean and pure
+#[derive(Serialize, Deserialize, Clone)]
+struct PromptContent {
+    title: String,
+    content: String,
+}
+
+// Metadata stored in .bouldy/prompt-metadata.json - app-specific data
+#[derive(Serialize, Deserialize, Clone, Default)]
+struct PromptStats {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tags: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    category: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    variables: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "lastUsed")]
+    last_used: Option<u64>,
+    #[serde(rename = "useCount")]
+    use_count: u64,
+}
+
+// What React sends when creating/updating a prompt
+#[derive(Serialize, Deserialize, Clone)]
+struct PromptInput {
+    title: String,
+    content: String,
+    #[serde(default)]
+    tags: Vec<String>,
+    category: Option<String>,
+    #[serde(default)]
+    variables: Vec<String>,
+}
+
+// What React sees - combined view
 #[derive(Serialize, Deserialize, Clone)]
 struct Prompt {
     id: String,
@@ -35,19 +72,6 @@ struct Prompt {
     created: u64,
     modified: u64,
     path: String,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-struct PromptMetadata {
-    title: String,
-    content: String,
-    tags: Vec<String>,
-    category: Option<String>,
-    variables: Vec<String>,
-    #[serde(rename = "lastUsed")]
-    last_used: Option<u64>,
-    #[serde(rename = "useCount")]
-    use_count: u64,
 }
 
 #[tauri::command]
@@ -505,80 +529,116 @@ async fn start_vault_watcher(app: AppHandle, vault_path: String) -> Result<(), S
 }
 
 // Prompt helper functions
-fn parse_prompt_frontmatter(content: &str) -> Result<(PromptMetadata, String), String> {
-    // Split frontmatter from content
-    let parts: Vec<&str> = content.splitn(3, "---").collect();
-
-    if parts.len() < 3 || !parts[0].trim().is_empty() {
-        // No valid frontmatter, return defaults
-        return Ok((
-            PromptMetadata {
-                title: "Untitled".to_string(),
-                content: content.to_string(),
-                tags: vec![],
-                category: None,
-                variables: vec![],
-                last_used: None,
-                use_count: 0,
-            },
-            content.to_string(),
-        ));
+// Ensure .bouldy directory exists
+fn ensure_bouldy_dir(vault_path: &str) -> Result<PathBuf, String> {
+    let bouldy_dir = Path::new(vault_path).join(".bouldy");
+    if !bouldy_dir.exists() {
+        fs::create_dir(&bouldy_dir)
+            .map_err(|e| format!("Failed to create .bouldy directory: {}", e))?;
     }
-
-    let frontmatter = parts[1].trim();
-    let body = parts[2].trim();
-
-    let metadata: PromptMetadata = serde_yaml::from_str(frontmatter)
-        .map_err(|e| format!("Failed to parse frontmatter: {}", e))?;
-
-    Ok((metadata, body.to_string()))
+    Ok(bouldy_dir)
 }
 
-fn serialize_prompt(metadata: &PromptMetadata) -> Result<String, String> {
-    let frontmatter = serde_yaml::to_string(metadata)
-        .map_err(|e| format!("Failed to serialize frontmatter: {}", e))?;
-
-    Ok(format!("---\n{}---\n\n{}", frontmatter, metadata.content))
+// Parse clean markdown prompt file
+fn parse_prompt_content(content: &str) -> Result<PromptContent, String> {
+    let lines: Vec<&str> = content.lines().collect();
+    
+    if lines.is_empty() {
+        return Ok(PromptContent {
+            title: "Untitled".to_string(),
+            content: String::new(),
+        });
+    }
+    
+    let title = if lines[0].starts_with("# ") {
+        lines[0][2..].trim().to_string()
+    } else {
+        "Untitled".to_string()
+    };
+    
+    let body_start = if lines[0].starts_with("# ") { 1 } else { 0 };
+    let body = lines[body_start..]
+        .iter()
+        .map(|s| s.to_string())
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string();
+    
+    Ok(PromptContent {
+        title,
+        content: body,
+    })
 }
 
-fn extract_prompt_metadata(path: &Path) -> Result<Prompt, String> {
-    let content = fs::read_to_string(path).map_err(|e| format!("Failed to read prompt: {}", e))?;
+// Serialize prompt to clean markdown
+fn serialize_prompt_content(prompt: &PromptContent) -> String {
+    format!("# {}\n\n{}", prompt.title, prompt.content)
+}
 
-    let (mut metadata, body) = parse_prompt_frontmatter(&content)?;
-    metadata.content = body;
+// Load all metadata from .bouldy/prompt-metadata.json
+fn load_all_prompt_stats(vault_path: &str) -> Result<HashMap<String, PromptStats>, String> {
+    let bouldy_dir = Path::new(vault_path).join(".bouldy");
+    let metadata_file = bouldy_dir.join("prompt-metadata.json");
+    
+    if !metadata_file.exists() {
+        return Ok(HashMap::new());
+    }
+    
+    let content = fs::read_to_string(&metadata_file)
+        .map_err(|e| format!("Failed to read prompt metadata: {}", e))?;
+    
+    serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse prompt metadata: {}", e))
+}
 
-    let file_metadata =
-        fs::metadata(path).map_err(|e| format!("Failed to read file metadata: {}", e))?;
+// Save all metadata to .bouldy/prompt-metadata.json
+fn save_all_prompt_stats(vault_path: &str, stats: &std::collections::HashMap<String, PromptStats>) -> Result<(), String> {
+    let bouldy_dir = ensure_bouldy_dir(vault_path)?;
+    let metadata_file = bouldy_dir.join("prompt-metadata.json");
+    
+    let content = serde_json::to_string_pretty(stats)
+        .map_err(|e| format!("Failed to serialize prompt metadata: {}", e))?;
+    
+    fs::write(&metadata_file, content)
+        .map_err(|e| format!("Failed to write prompt metadata: {}", e))
+}
 
+// Extract full Prompt from file + metadata
+fn extract_prompt_from_file(path: &Path, id: &str, all_stats: &std::collections::HashMap<String, PromptStats>) -> Result<Prompt, String> {
+    let content = fs::read_to_string(path)
+        .map_err(|e| format!("Failed to read prompt: {}", e))?;
+    
+    let prompt_content = parse_prompt_content(&content)?;
+    
+    let file_metadata = fs::metadata(path)
+        .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+    
     let modified = file_metadata
         .modified()
         .map_err(|e| format!("Failed to get modified time: {}", e))?
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_secs();
-
+    
     let created = file_metadata
         .created()
         .unwrap_or_else(|_| file_metadata.modified().unwrap())
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_secs();
-
-    let id = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .map(|s| s.to_string())
-        .unwrap_or_else(|| "untitled".to_string());
-
+    
+    let stats = all_stats.get(id).cloned().unwrap_or_default();
+    
     Ok(Prompt {
-        id,
-        title: metadata.title,
-        content: metadata.content,
-        tags: metadata.tags,
-        category: metadata.category,
-        variables: metadata.variables,
-        last_used: metadata.last_used,
-        use_count: metadata.use_count,
+        id: id.to_string(),
+        title: prompt_content.title,
+        content: prompt_content.content,
+        tags: stats.tags.unwrap_or_default(),
+        category: stats.category,
+        variables: stats.variables.unwrap_or_default(),
+        last_used: stats.last_used,
+        use_count: stats.use_count,
         created,
         modified,
         path: path.to_string_lossy().to_string(),
@@ -597,6 +657,9 @@ async fn list_prompts(vault_path: String) -> Result<Vec<Prompt>, String> {
         return Ok(vec![]);
     }
 
+    // Load all metadata
+    let all_stats = load_all_prompt_stats(&vault_path)?;
+
     let mut prompts = Vec::new();
 
     let entries = fs::read_dir(&prompts_dir)
@@ -607,7 +670,12 @@ async fn list_prompts(vault_path: String) -> Result<Vec<Prompt>, String> {
         let path = entry.path();
 
         if path.extension().and_then(|s| s.to_str()) == Some("md") {
-            match extract_prompt_metadata(&path) {
+            let id = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("untitled");
+            
+            match extract_prompt_from_file(&path, id, &all_stats) {
                 Ok(prompt) => prompts.push(prompt),
                 Err(_) => {
                     // Skip invalid prompts silently
@@ -628,12 +696,13 @@ async fn list_prompts(vault_path: String) -> Result<Vec<Prompt>, String> {
 }
 
 #[tauri::command]
-async fn read_prompt(path: String) -> Result<PromptMetadata, String> {
-    let content = fs::read_to_string(&path).map_err(|e| format!("Failed to read prompt: {}", e))?;
+async fn read_prompt(vault_path: String, id: String) -> Result<Prompt, String> {
+    let vault = Path::new(&vault_path);
+    let prompts_dir = vault.join("prompts");
+    let file_path = prompts_dir.join(format!("{}.md", id));
 
-    let (metadata, _body) = parse_prompt_frontmatter(&content)?;
-
-    Ok(metadata)
+    let all_stats = load_all_prompt_stats(&vault_path)?;
+    extract_prompt_from_file(&file_path, &id, &all_stats)
 }
 
 #[tauri::command]
@@ -641,7 +710,7 @@ async fn write_prompt(
     app: AppHandle,
     vault_path: String,
     id: String,
-    metadata: PromptMetadata,
+    input: PromptInput,
 ) -> Result<Prompt, String> {
     let vault = Path::new(&vault_path);
     let prompts_dir = vault.join("prompts");
@@ -652,12 +721,32 @@ async fn write_prompt(
             .map_err(|e| format!("Failed to create prompts directory: {}", e))?;
     }
 
+    // Write clean markdown file (just title + content)
+    let prompt_content = PromptContent {
+        title: input.title,
+        content: input.content,
+    };
     let file_path = prompts_dir.join(format!("{}.md", id));
-    let serialized = serialize_prompt(&metadata)?;
-
+    let serialized = serialize_prompt_content(&prompt_content);
     fs::write(&file_path, serialized).map_err(|e| format!("Failed to write prompt: {}", e))?;
 
-    let prompt = extract_prompt_metadata(&file_path)?;
+    // Update metadata in .bouldy/prompt-metadata.json
+    let mut all_stats = load_all_prompt_stats(&vault_path)?;
+    all_stats.insert(
+        id.clone(),
+        PromptStats {
+            tags: if input.tags.is_empty() { None } else { Some(input.tags) },
+            category: input.category,
+            variables: if input.variables.is_empty() { None } else { Some(input.variables) },
+            last_used: None,
+            use_count: 0,
+        },
+    );
+    save_all_prompt_stats(&vault_path, &all_stats)?;
+
+    // Load and return the full prompt
+    let all_stats = load_all_prompt_stats(&vault_path)?;
+    let prompt = extract_prompt_from_file(&file_path, &id, &all_stats)?;
 
     // Emit event after successful save
     let _ = app.emit("prompt:saved", prompt.clone());
@@ -666,15 +755,18 @@ async fn write_prompt(
 }
 
 #[tauri::command]
-async fn delete_prompt(app: AppHandle, path: String) -> Result<(), String> {
-    let path_obj = Path::new(&path);
-    let id = path_obj
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .map(|s| s.to_string())
-        .unwrap_or_default();
+async fn delete_prompt(app: AppHandle, vault_path: String, id: String) -> Result<(), String> {
+    let vault = Path::new(&vault_path);
+    let prompts_dir = vault.join("prompts");
+    let file_path = prompts_dir.join(format!("{}.md", id));
 
-    fs::remove_file(&path).map_err(|e| format!("Failed to delete prompt: {}", e))?;
+    // Delete the prompt file
+    fs::remove_file(&file_path).map_err(|e| format!("Failed to delete prompt: {}", e))?;
+
+    // Remove from metadata
+    let mut all_stats = load_all_prompt_stats(&vault_path)?;
+    all_stats.remove(&id);
+    save_all_prompt_stats(&vault_path, &all_stats)?;
 
     // Emit event after successful deletion
     #[derive(Clone, Serialize)]
@@ -686,7 +778,7 @@ async fn delete_prompt(app: AppHandle, path: String) -> Result<(), String> {
     let _ = app.emit(
         "prompt:deleted",
         PromptDeletedPayload {
-            path: path.clone(),
+            path: file_path.to_string_lossy().to_string(),
             id,
         },
     );
@@ -696,28 +788,21 @@ async fn delete_prompt(app: AppHandle, path: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn track_prompt_usage(_app: AppHandle, vault_path: String, id: String) -> Result<(), String> {
-    let vault = Path::new(&vault_path);
-    let prompts_dir = vault.join("prompts");
-    let file_path = prompts_dir.join(format!("{}.md", id));
+    // Load all metadata
+    let mut all_stats = load_all_prompt_stats(&vault_path)?;
 
-    // Read current prompt
-    let content =
-        fs::read_to_string(&file_path).map_err(|e| format!("Failed to read prompt: {}", e))?;
-
-    let (mut metadata, _body) = parse_prompt_frontmatter(&content)?;
-
-    // Update usage tracking
-    metadata.use_count += 1;
-    metadata.last_used = Some(
+    // Update usage tracking for this prompt
+    let stats = all_stats.entry(id).or_insert_with(PromptStats::default);
+    stats.use_count += 1;
+    stats.last_used = Some(
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs(),
     );
 
-    // Write back
-    let serialized = serialize_prompt(&metadata)?;
-    fs::write(&file_path, serialized).map_err(|e| format!("Failed to write prompt: {}", e))?;
+    // Save back
+    save_all_prompt_stats(&vault_path, &all_stats)?;
 
     Ok(())
 }

@@ -1,8 +1,9 @@
 import { FolderOpen, Download } from "lucide-react";
 import { themes } from "../../../styles/themes";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { getVersion } from "@tauri-apps/api/app";
 
 interface SettingsPanelProps {
   currentTheme: string;
@@ -20,6 +21,7 @@ export default function SettingsPanel({
   const [updateStatus, setUpdateStatus] = useState<string>("");
   const [isChecking, setIsChecking] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [currentVersion, setCurrentVersion] = useState<string>("");
 
   const checkForUpdates = async () => {
     setIsChecking(true);
@@ -46,6 +48,39 @@ export default function SettingsPanel({
       setIsDownloading(false);
     }
   };
+
+  // Load current version on mount
+  useEffect(() => {
+    const loadVersion = async () => {
+      try {
+        const version = await getVersion();
+        setCurrentVersion(version);
+      } catch (error) {
+        console.error("Failed to get version:", error);
+      }
+    };
+
+    loadVersion();
+  }, []);
+
+  // Auto-check for updates on mount
+  useEffect(() => {
+    const autoCheckUpdates = async () => {
+      try {
+        const update = await check();
+        if (update?.available) {
+          setUpdateStatus(`Update available: v${update.version}`);
+        } else {
+          setUpdateStatus(""); // Clear status if up to date
+        }
+      } catch (error) {
+        console.error("Auto-update check failed:", error);
+        setUpdateStatus(""); // Clear status on error
+      }
+    };
+
+    autoCheckUpdates();
+  }, []);
 
   return (
     <div className="p-6 max-w-2xl mx-auto w-full">
@@ -116,9 +151,16 @@ export default function SettingsPanel({
               <Download size={24} />
             </div>
             <div className="flex-1">
-              <div className="text-sm text-text-muted mb-1">App Updates</div>
+              <div className="text-sm text-text-muted mb-1">
+                App Updates
+                {currentVersion && (
+                  <span className="ml-2 font-mono text-xs text-text">
+                    v{currentVersion}
+                  </span>
+                )}
+              </div>
               <div className="text-sm text-text">
-                {updateStatus || "Check for the latest version"}
+                {updateStatus || "Up to date"}
               </div>
             </div>
           </div>

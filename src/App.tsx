@@ -9,7 +9,7 @@ import { WindowControls, Home, Sidebar } from "./shared";
 import TodoSpace from "./features/todos/TodoSpace";
 import { CalendarView } from "./features/calendar";
 import { SettingsPanel } from "./features/settings";
-import { PromptsPanel, PromptsProvider } from "./features/prompts";
+import { PromptsPanel } from "./features/prompts";
 import {
   PomodoroPanel,
   PomodoroProvider,
@@ -177,7 +177,7 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
           />
         );
       case "prompts":
-        return <PromptsPanel />;
+        return <PromptsPanel vaultPath={vaultPath} />;
       case "pomodoro":
         return <PomodoroPanel />;
     }
@@ -378,14 +378,12 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <PromptsProvider vaultPath={vaultPath}>
-        <PomodoroProvider vaultPath={vaultPath}>
-          <AppContent
-            onResetVault={() => setVaultPath(null)}
-            vaultPath={vaultPath}
-          />
-        </PomodoroProvider>
-      </PromptsProvider>
+      <PomodoroProvider vaultPath={vaultPath}>
+        <AppContent
+          onResetVault={() => setVaultPath(null)}
+          vaultPath={vaultPath}
+        />
+      </PomodoroProvider>
     </QueryClientProvider>
   );
 }
