@@ -15,6 +15,7 @@ import {
   PomodoroProvider,
   usePomodoro,
 } from "./features/pomodoro";
+import { CommandMenu, useCommandMenu, Command } from "./features/command-menu";
 import { PanelType, PanelState, PinnedState } from "./types";
 
 interface AppContentProps {
@@ -158,6 +159,152 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
   const handlePanelFocus = (side: "left" | "right") => {
     setMruSide(side);
   };
+
+  // Command Menu - Define all available commands
+  const commands: Command[] = [
+    // Panel Navigation Commands
+    {
+      id: "panel:editor",
+      title: "Open Editor",
+      description: "Open the markdown editor panel",
+      category: "panel",
+      keywords: ["editor", "write", "markdown", "note"],
+      action: () => activatePanel("editor"),
+    },
+    {
+      id: "panel:todos",
+      title: "Open Todos",
+      description: "Open the tasks and todos panel",
+      category: "panel",
+      keywords: ["todos", "tasks", "checklist"],
+      action: () => activatePanel("todos"),
+    },
+    {
+      id: "panel:calendar",
+      title: "Open Calendar",
+      description: "Open the calendar view",
+      category: "panel",
+      keywords: ["calendar", "schedule", "dates"],
+      action: () => activatePanel("calendar"),
+    },
+    {
+      id: "panel:settings",
+      title: "Open Settings",
+      description: "Open application settings",
+      category: "panel",
+      keywords: ["settings", "preferences", "config"],
+      action: () => activatePanel("settings"),
+    },
+    {
+      id: "panel:prompts",
+      title: "Open Prompts",
+      description: "Open the prompts library",
+      category: "panel",
+      keywords: ["prompts", "templates", "snippets"],
+      action: () => activatePanel("prompts"),
+    },
+    {
+      id: "panel:pomodoro",
+      title: "Open Pomodoro",
+      description: "Open the pomodoro timer",
+      category: "panel",
+      keywords: ["pomodoro", "timer", "focus"],
+      action: () => activatePanel("pomodoro"),
+    },
+    {
+      id: "panel:close-left",
+      title: "Close Left Panel",
+      description: "Close the left panel",
+      category: "panel",
+      keywords: ["close", "left"],
+      action: () => closePanel("left"),
+    },
+    {
+      id: "panel:close-right",
+      title: "Close Right Panel",
+      description: "Close the right panel",
+      category: "panel",
+      keywords: ["close", "right"],
+      action: () => closePanel("right"),
+    },
+    // Theme Commands
+    {
+      id: "theme:midnight",
+      title: "Switch to Midnight Theme",
+      description: "Dark blue theme",
+      category: "theme",
+      keywords: ["theme", "midnight", "dark", "blue"],
+      action: () => setCurrentTheme("midnight"),
+    },
+    {
+      id: "theme:dawn",
+      title: "Switch to Dawn Theme",
+      description: "Light theme",
+      category: "theme",
+      keywords: ["theme", "dawn", "light"],
+      action: () => setCurrentTheme("dawn"),
+    },
+    {
+      id: "theme:forest",
+      title: "Switch to Forest Theme",
+      description: "Green theme",
+      category: "theme",
+      keywords: ["theme", "forest", "green"],
+      action: () => setCurrentTheme("forest"),
+    },
+    {
+      id: "theme:sunset",
+      title: "Switch to Sunset Theme",
+      description: "Orange and pink theme",
+      category: "theme",
+      keywords: ["theme", "sunset", "orange", "pink"],
+      action: () => setCurrentTheme("sunset"),
+    },
+    {
+      id: "theme:clean",
+      title: "Switch to Clean Theme",
+      description: "Pure white theme",
+      category: "theme",
+      keywords: ["theme", "clean", "white", "light"],
+      action: () => setCurrentTheme("clean"),
+    },
+    // App Commands
+    {
+      id: "app:change-vault",
+      title: "Change Vault",
+      description: "Switch to a different vault",
+      category: "app",
+      keywords: ["vault", "folder", "change", "switch"],
+      action: () => onResetVault(),
+    },
+  ];
+
+  // Initialize command menu
+  const {
+    isOpen: isCommandMenuOpen,
+    searchQuery: commandSearchQuery,
+    selectedIndex: commandSelectedIndex,
+    filteredCommands,
+    openMenu,
+    closeMenu,
+    setSearchQuery: setCommandSearchQuery,
+    selectNext,
+    selectPrevious,
+    executeSelected,
+  } = useCommandMenu(commands);
+
+  // Keyboard listener for Cmd/Ctrl+K
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        openMenu();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [openMenu]);
 
   const renderPanel = (type: PanelType) => {
     switch (type) {
@@ -326,6 +473,19 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
           )}
         </div>
       </div>
+
+      {/* Command Menu */}
+      <CommandMenu
+        isOpen={isCommandMenuOpen}
+        commands={filteredCommands}
+        searchQuery={commandSearchQuery}
+        selectedIndex={commandSelectedIndex}
+        onClose={closeMenu}
+        onSearchChange={setCommandSearchQuery}
+        onSelectNext={selectNext}
+        onSelectPrevious={selectPrevious}
+        onExecuteSelected={executeSelected}
+      />
     </div>
   );
 }
