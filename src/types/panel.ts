@@ -1,5 +1,5 @@
 export type PanelType =
-  | "editor"
+  | "notes"
   | "todos"
   | "calendar"
   | "settings"

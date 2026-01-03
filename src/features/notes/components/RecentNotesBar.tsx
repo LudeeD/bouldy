@@ -13,11 +13,13 @@ interface Note {
 interface RecentNotesBarProps {
   activePath: string | undefined;
   onSelectNote: (note: Note) => void;
+  onBrowseAll: () => void;
 }
 
 const RecentNotesBar = memo(function RecentNotesBar({
   activePath,
   onSelectNote,
+  onBrowseAll,
 }: RecentNotesBarProps) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [vaultPath, setVaultPath] = useState<string>("");
@@ -105,9 +107,9 @@ const RecentNotesBar = memo(function RecentNotesBar({
     };
   }, []);
 
-  // Sort notes by modified timestamp (descending) - memoized
+  // Sort notes by modified timestamp (descending) and limit to 5 - memoized
   const sortedNotes = useMemo(
-    () => [...notes].sort((a, b) => b.modified - a.modified),
+    () => [...notes].sort((a, b) => b.modified - a.modified).slice(0, 5),
     [notes],
   );
 
@@ -208,6 +210,16 @@ const RecentNotesBar = memo(function RecentNotesBar({
            ))}
          </div>
        </div>
+
+       <div className="h-4 w-px bg-border mx-2 flex-shrink-0" />
+
+       <button
+         onClick={onBrowseAll}
+         className="flex items-center gap-1.5 px-2 py-1 border border-border text-text-muted hover:text-primary hover:border-primary transition-colors text-xs font-medium flex-shrink-0"
+         title="Browse All Notes"
+       >
+         <span>Browse</span>
+       </button>
      </div>
    );
 });

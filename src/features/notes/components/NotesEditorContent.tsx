@@ -31,7 +31,7 @@ export interface EditorContentHandle {
   save: () => Promise<void>;
 }
 
-const EditorContent = forwardRef<EditorContentHandle, EditorContentProps>(
+const NotesEditorContent = forwardRef<EditorContentHandle, EditorContentProps>(
   ({ notePath, noteTitle, initialContent, onDirtyChange }, ref) => {
     const editorRef = useRef<MDXEditorMethods>(null);
     const [markdown, setMarkdown] = useState(initialContent);
@@ -111,6 +111,6 @@ const EditorContent = forwardRef<EditorContentHandle, EditorContentProps>(
   },
 );
 
-EditorContent.displayName = "EditorContent";
+NotesEditorContent.displayName = "NotesEditorContent";
 
-export default EditorContent;
+export default NotesEditorContent;

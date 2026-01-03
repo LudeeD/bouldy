@@ -15,7 +15,7 @@ interface EditorHeaderProps {
   isDirty: boolean;
 }
 
-export default function EditorHeader({
+export default function NotesEditorHeader({
   note,
   onRename,
   onSave,

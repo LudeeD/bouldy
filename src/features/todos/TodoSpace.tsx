@@ -232,7 +232,7 @@ export default function TodoSpace({ vaultPath }: TodoSpaceProps) {
       </div>
 
       {/* Add Task Input */}
-      <div className="px-4 py-3 border-b border-border-muted">
+      <div className="px-3 py-2 border-b border-border-muted">
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -280,7 +280,7 @@ export default function TodoSpace({ vaultPath }: TodoSpaceProps) {
       </div>
 
       {/* Todo List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2">
+      <div className="flex-1 overflow-y-auto p-2 space-y-2">
         {filteredTodos.length === 0 ? (
           <div className="text-center text-sm text-text-muted mt-8">
             No tasks for {activeTab === "today" ? "today" : "upcoming"}

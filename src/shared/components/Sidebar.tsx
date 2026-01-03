@@ -7,14 +7,7 @@ import {
   MessageSquare,
   Timer,
 } from "lucide-react";
-
-type PanelType =
-  | "editor"
-  | "todos"
-  | "calendar"
-  | "settings"
-  | "prompts"
-  | "pomodoro";
+import { PanelType } from "../../types/panel";
 
 interface SidebarProps {
   activePanels: {
@@ -68,15 +61,19 @@ export default function Sidebar({ activePanels, onOpenPanel }: SidebarProps) {
   return (
     <div className="w-12 bg-bg-dark flex flex-col items-center z-20">
       {/* Boulder emoji at top */}
-      <div className="h-12 flex items-center justify-center text-lg">🪨</div>
+      <div className="h-12 flex items-center justify-center text-lg cursor-pointer">
+        <span className="inline-block boulder-emoji">
+          🪨
+        </span>
+      </div>
 
       {/* Icon buttons */}
       <div className="flex flex-col gap-2">
         <SidebarButton
           icon={<FileText size={16} />}
-          label="Editor"
-          isActive={isActive("editor")}
-          onClick={() => onOpenPanel("editor")}
+          label="Notes"
+          isActive={isActive("notes")}
+          onClick={() => onOpenPanel("notes")}
         />
 
         <SidebarButton

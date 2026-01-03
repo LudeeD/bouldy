@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Store } from "@tauri-apps/plugin-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Editor } from "./features/editor";
+import { NotesEditor } from "./features/notes";
 import { VaultSelector } from "./features/vault";
 import { WindowControls, Home, Sidebar } from "./shared";
 import TodoSpace from "./features/todos/TodoSpace";
@@ -32,9 +32,9 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
   const [store, setStore] = useState<Store | null>(null);
   const [isNarrowScreen, setIsNarrowScreen] = useState(false);
 
-  // Initialize with editor on left, todos on right
+  // Initialize with notes on left, todos on right
   const [panels, setPanels] = useState<PanelState>({
-    left: "editor",
+    left: "notes",
     right: "todos",
   });
 
@@ -164,12 +164,12 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
   const commands: Command[] = [
     // Panel Navigation Commands
     {
-      id: "panel:editor",
-      title: "Open Editor",
-      description: "Open the markdown editor panel",
+      id: "panel:notes",
+      title: "Open Notes",
+      description: "Open the markdown notes panel",
       category: "panel",
-      keywords: ["editor", "write", "markdown", "note"],
-      action: () => activatePanel("editor"),
+      keywords: ["notes", "write", "markdown", "editor"],
+      action: () => activatePanel("notes"),
     },
     {
       id: "panel:todos",
@@ -308,8 +308,8 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
 
   const renderPanel = (type: PanelType) => {
     switch (type) {
-      case "editor":
-        return <Editor />;
+      case "notes":
+        return <NotesEditor />;
       case "todos":
         return <TodoSpace vaultPath={vaultPath} />;
       case "calendar":

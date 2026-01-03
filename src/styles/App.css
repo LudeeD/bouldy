@@ -193,6 +193,8 @@ body {
 .ProseMirror {
   outline: none;
   caret-color: var(--primary);
+  font-size: 1rem;
+  line-height: 1.75;
 }
 
 /* Empty paragraph placeholder */
@@ -417,4 +419,28 @@ body {
 .mdxeditor-custom [role="listbox"],
 .mdxeditor-popup-container {
   z-index: 50 !important;
+}
+
+/* Whimsical boulder wiggle animation */
+@keyframes boulder-wiggle {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(-15deg) scale(1.1) translateY(-2px);
+  }
+  50% {
+    transform: rotate(15deg) scale(1.15) translateY(-4px);
+  }
+  75% {
+    transform: rotate(-10deg) scale(1.1) translateY(-2px);
+  }
+}
+
+.boulder-emoji {
+  transition: transform 0.2s ease;
+}
+
+.boulder-emoji:hover {
+  animation: boulder-wiggle 0.5s ease-in-out;
 }
