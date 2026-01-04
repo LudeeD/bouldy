@@ -1,9 +1,11 @@
-import { FolderOpen, Download } from "lucide-react";
+import { FolderOpen, Download, Target } from "lucide-react";
 import { themes } from "../../../styles/themes";
 import { useState, useEffect } from "react";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
+import { invoke } from "@tauri-apps/api/core";
+import type { TodoMetadata } from "../../../types/todo";
 
 interface SettingsPanelProps {
   currentTheme: string;
@@ -22,6 +24,8 @@ export default function SettingsPanel({
   const [isChecking, setIsChecking] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentVersion, setCurrentVersion] = useState<string>("");
+  const [dailyLimit, setDailyLimit] = useState<number>(5);
+  const [isSavingLimit, setIsSavingLimit] = useState(false);
 
   const checkForUpdates = async () => {
     setIsChecking(true);
@@ -82,6 +86,33 @@ export default function SettingsPanel({
     autoCheckUpdates();
   }, []);
 
+  // Load daily limit
+  useEffect(() => {
+    const loadDailyLimit = async () => {
+      if (!vaultPath) return;
+      try {
+        const metadata = await invoke<TodoMetadata>("get_todo_metadata", { vaultPath });
+        setDailyLimit(metadata.dailyLimit);
+      } catch (error) {
+        console.error("Failed to load daily limit:", error);
+      }
+    };
+
+    loadDailyLimit();
+  }, [vaultPath]);
+
+  const handleSaveDailyLimit = async () => {
+    if (!vaultPath) return;
+    setIsSavingLimit(true);
+    try {
+      await invoke("set_daily_limit", { vaultPath, limit: dailyLimit });
+    } catch (error) {
+      console.error("Failed to save daily limit:", error);
+    } finally {
+      setIsSavingLimit(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-2xl mx-auto w-full">
       <h1 className="text-2xl font-bold mb-8 text-text">Settings</h1>
@@ -111,6 +142,42 @@ export default function SettingsPanel({
                 <span className="font-medium">{theme.name}</span>
               </button>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Todos Section */}
+      <section className="mb-10">
+        <h2 className="text-lg font-semibold mb-4 text-text">Todos</h2>
+        <div className="bg-bg border-2 border-border p-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 bg-bg-light border-2 border-border text-primary">
+              <Target size={24} />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm text-text-muted mb-1">Daily Task Limit</div>
+              <div className="text-sm text-text mb-3">
+                Maximum number of tasks to focus on each day
+              </div>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={dailyLimit}
+                onChange={(e) => setDailyLimit(parseInt(e.target.value) || 1)}
+                className="w-24 px-3 py-2 bg-bg-dark border-2 border-border text-text text-sm font-medium focus:outline-none focus:border-primary"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={handleSaveDailyLimit}
+              disabled={isSavingLimit}
+              className="px-4 py-2 bg-primary text-bg-light border-2 border-primary hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium transition-all"
+            >
+              {isSavingLimit ? "Saving..." : "Save"}
+            </button>
           </div>
         </div>
       </section>

@@ -10,6 +10,7 @@ interface Note {
   name: string;
   title: string;
   modified: number;
+  is_symlink: boolean;
 }
 
 type ViewMode = "browser" | "editor";
@@ -21,10 +22,15 @@ export default function NotesEditor() {
 
   const loadNote = async (note: Note) => {
     try {
+      console.log(`[NotesEditor] Loading note: ${note.title}`);
+      console.log(`[NotesEditor] Path: ${note.path}`);
+
       const metadata = await invoke<{ title: string; content: string }>(
         "read_note",
         { path: note.path },
       );
+
+      console.log(`[NotesEditor] Successfully loaded, content length: ${metadata.content.length}`);
 
       setCurrentNote(note);
       setNoteContent(metadata.content);
@@ -35,10 +41,11 @@ export default function NotesEditor() {
         await store.set("lastOpenedNotePath", note.path);
         await store.save();
       } catch (error) {
-        console.error("Failed to save last opened note path:", error);
+        console.error("[NotesEditor] Failed to save last opened note path:", error);
       }
     } catch (error) {
-      console.error("Failed to load note:", error);
+      console.error("[NotesEditor] Failed to load note:", error);
+      alert(`Failed to load note: ${error}`);
     }
   };
 

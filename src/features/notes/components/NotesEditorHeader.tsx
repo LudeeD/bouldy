@@ -6,6 +6,7 @@ interface Note {
   name: string;
   title: string;
   modified: number;
+  is_symlink: boolean;
 }
 
 interface EditorHeaderProps {

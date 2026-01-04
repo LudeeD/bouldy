@@ -1,7 +1,7 @@
 {
   "name": "bouldy",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,9 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@mdxeditor/editor": "^3.50.0",
     "@tanstack/react-query": "^5.28.0",
     "@tauri-apps/api": "^2",

@@ -5,6 +5,7 @@ export interface NoteEventPayload {
   name: string;
   title?: string;
   modified?: number;
+  is_symlink?: boolean;
 }
 
 export interface NoteListPayload {
@@ -16,6 +17,7 @@ export interface NoteSelectionPayload {
   title: string;
   name: string;
   modified: number;
+  is_symlink: boolean;
 }
 
 export type NoteEventType =

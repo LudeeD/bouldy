@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Search, ArrowLeft, Trash2, FolderOpen } from "lucide-react";
+import { Search, ArrowLeft, Trash2, FolderOpen, Link2 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listenToNoteEvents } from "../../../utils/events";
 import ConfirmDialog from "../../../shared/components/ConfirmDialog";
@@ -10,6 +10,7 @@ interface Note {
   name: string;
   title: string;
   modified: number;
+  is_symlink: boolean;
 }
 
 interface NotesBrowserViewProps {
@@ -37,17 +38,24 @@ export default function NotesBrowserView({
 
   // Load notes and listen to events
   useEffect(() => {
+    console.log("[NotesBrowser] Component mounted!");
+
     const loadNotes = async () => {
       try {
         const vaultPath = await invoke<string | null>("get_vault_path");
         if (vaultPath) {
+          console.log("[NotesBrowser] Loading notes from:", vaultPath);
           const notesList = await invoke<Note[]>("list_vault_files", {
             vaultPath,
+          });
+          console.log(`[NotesBrowser] Loaded ${notesList.length} notes`);
+          notesList.forEach(note => {
+            console.log(`  - ${note.title} (${note.path})`);
           });
           setNotes(notesList);
         }
       } catch (error) {
-        console.error("Failed to load notes:", error);
+        console.error("[NotesBrowser] Failed to load notes:", error);
       }
     };
 
@@ -91,34 +99,46 @@ export default function NotesBrowserView({
 
   // Import note handlers
   const handleOpenFile = async () => {
+    console.log("[NotesBrowser] Open button clicked!");
     try {
       const filePath = await invoke<string | null>("pick_markdown_file");
+      console.log("[NotesBrowser] Picked file:", filePath);
       if (!filePath) return; // User cancelled
 
       const fileName = filePath.split(/[\\/]/).pop() || "unknown.md";
       setImportDialog({ isOpen: true, filePath, fileName });
+      console.log("[NotesBrowser] Import dialog opened");
     } catch (error) {
-      console.error("Failed to pick file:", error);
+      console.error("[NotesBrowser] Failed to pick file:", error);
     }
   };
 
   const handleImport = async (importType: "copy" | "symlink") => {
     try {
-      const vaultPath = await invoke<string | null>("get_vault_path");
-      if (!vaultPath) return;
+      console.log(`[Import] Starting import: ${importType}`);
+      console.log(`[Import] Source: ${importDialog.filePath}`);
 
-      await invoke("import_note", {
+      const vaultPath = await invoke<string | null>("get_vault_path");
+      if (!vaultPath) {
+        console.error("[Import] No vault path found");
+        return;
+      }
+      console.log(`[Import] Vault: ${vaultPath}`);
+
+      const result = await invoke<string>("import_note", {
         vaultPath,
         sourcePath: importDialog.filePath,
         importType,
       });
+
+      console.log(`[Import] Success! Note created at: ${result}`);
 
       // Close dialog
       setImportDialog({ isOpen: false, filePath: "", fileName: "" });
 
       // Notes will auto-refresh via event listener
     } catch (error) {
-      console.error("Failed to import note:", error);
+      console.error("[Import] Failed:", error);
       alert(`Failed to import: ${error}`);
     }
   };
@@ -300,9 +320,16 @@ export default function NotesBrowserView({
               className="group px-3 py-2 border border-border-muted hover:border-border transition-colors cursor-pointer bg-bg-light hover:bg-highlight"
             >
               <div className="flex items-center justify-between gap-2 mb-1">
-                <h3 className="text-sm font-medium text-text group-hover:text-primary transition-colors flex-1">
-                  {note.title}
-                </h3>
+                <div className="flex items-center gap-1.5 flex-1">
+                  <h3 className="text-sm font-medium text-text group-hover:text-primary transition-colors">
+                    {note.title}
+                  </h3>
+                  {note.is_symlink && (
+                    <span title="Symlink">
+                      <Link2 size={12} className="text-text-muted" />
+                    </span>
+                  )}
+                </div>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

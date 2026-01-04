@@ -8,6 +8,7 @@ interface Note {
   name: string;
   title: string;
   modified: number;
+  is_symlink: boolean;
 }
 
 interface RecentNotesBarProps {
@@ -59,6 +60,7 @@ const RecentNotesBar = memo(function RecentNotesBar({
               name: n.name,
               title: n.title || "Untitled",
               modified: n.modified || 0,
+              is_symlink: n.is_symlink || false,
             })),
           );
         },
@@ -75,6 +77,7 @@ const RecentNotesBar = memo(function RecentNotesBar({
               name: payload.name,
               title: payload.title || "Untitled",
               modified: payload.modified || 0,
+              is_symlink: payload.is_symlink || false,
             },
           ]);
         },

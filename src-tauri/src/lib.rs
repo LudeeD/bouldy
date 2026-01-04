@@ -15,6 +15,7 @@ struct Note {
     name: String,
     title: String,
     modified: u64,
+    is_symlink: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -114,11 +115,33 @@ fn validate_path_in_vault(vault_path: &str, file_path: &str) -> Result<PathBuf, 
     let vault = Path::new(vault_path)
         .canonicalize()
         .map_err(|e| format!("Invalid vault path: {}", e))?;
-    let file = Path::new(file_path)
-        .canonicalize()
-        .map_err(|e| format!("Invalid file path: {}", e))?;
 
-    if !file.starts_with(&vault) {
+    let file_path_buf = Path::new(file_path);
+
+    // Check if the path is a symlink
+    // For symlinks, validate the symlink location itself, not where it points
+    let file = if file_path_buf.is_symlink() {
+        // For symlinks, check that the symlink itself is within the vault
+        let parent = file_path_buf
+            .parent()
+            .ok_or("Invalid file path")?
+            .canonicalize()
+            .map_err(|e| format!("Invalid parent path: {}", e))?;
+
+        if !parent.starts_with(&vault) {
+            return Err("Path is outside vault".to_string());
+        }
+
+        // Return the original path (the symlink), not the resolved target
+        file_path_buf.to_path_buf()
+    } else {
+        // For regular files, canonicalize as before
+        file_path_buf
+            .canonicalize()
+            .map_err(|e| format!("Invalid file path: {}", e))?
+    };
+
+    if !file.is_symlink() && !file.starts_with(&vault) {
         return Err("Path is outside vault".to_string());
     }
 
@@ -159,23 +182,32 @@ async fn list_vault_files(vault_path: String) -> Result<Vec<Note>, String> {
         let path = entry.path();
 
         if path.extension().and_then(|s| s.to_str()) == Some("md") {
-            let metadata =
-                fs::metadata(&path).map_err(|e| format!("Failed to read metadata: {}", e))?;
+            // Try to get metadata - if it fails (broken symlink), skip this file
+            let metadata = match fs::metadata(&path) {
+                Ok(m) => m,
+                Err(e) => {
+                    eprintln!("Warning: Skipping {} - {}", path.display(), e);
+                    continue;
+                }
+            };
 
-            let modified = metadata
-                .modified()
-                .map_err(|e| format!("Failed to get modified time: {}", e))?
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
+            let modified = match metadata.modified() {
+                Ok(m) => m.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+                Err(e) => {
+                    eprintln!("Warning: Skipping {} - {}", path.display(), e);
+                    continue;
+                }
+            };
 
             let title = extract_title_from_filename(&path);
+            let is_symlink = path.is_symlink();
 
             notes.push(Note {
                 path: path.to_string_lossy().to_string(),
                 name: path.file_name().unwrap().to_string_lossy().to_string(),
                 title,
                 modified,
+                is_symlink,
             });
         }
     }
@@ -215,12 +247,14 @@ async fn write_note(
         .as_secs();
 
     let path_obj = Path::new(&path);
+    let is_symlink = path_obj.is_symlink();
 
     let note = Note {
         path: path.clone(),
         name: path_obj.file_name().unwrap().to_string_lossy().to_string(),
         title: title.clone(),
         modified,
+        is_symlink,
     };
 
     // Emit event after successful save
@@ -262,6 +296,88 @@ async fn delete_note(app: AppHandle, vault_path: String, path: String) -> Result
     );
 
     Ok(())
+}
+
+#[tauri::command]
+async fn pick_markdown_file(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let file_path = app
+        .dialog()
+        .file()
+        .add_filter("Markdown", &["md", "markdown"])
+        .blocking_pick_file();
+
+    match file_path {
+        Some(path) => {
+            if let Some(path_ref) = path.as_path() {
+                Ok(Some(path_ref.to_string_lossy().to_string()))
+            } else {
+                Err("Failed to get file path".to_string())
+            }
+        }
+        None => Ok(None),
+    }
+}
+
+#[tauri::command]
+async fn import_note(
+    vault_path: String,
+    source_path: String,
+    import_type: String,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    use std::path::Path;
+    use std::fs;
+
+    let source = Path::new(&source_path);
+    if !source.exists() {
+        return Err("Source file does not exist".to_string());
+    }
+
+    // Get filename from source
+    let filename = source
+        .file_name()
+        .ok_or("Invalid filename")?
+        .to_str()
+        .ok_or("Invalid UTF-8 in filename")?;
+
+    let dest_path = Path::new(&vault_path).join("notes").join(filename);
+
+    // Check if file already exists
+    if dest_path.exists() {
+        return Err(format!("Note '{}' already exists in vault", filename));
+    }
+
+    match import_type.as_str() {
+        "copy" => {
+            fs::copy(&source, &dest_path)
+                .map_err(|e| format!("Failed to copy file: {}", e))?;
+        }
+        "symlink" => {
+            #[cfg(unix)]
+            {
+                std::os::unix::fs::symlink(&source, &dest_path)
+                    .map_err(|e| format!("Failed to create symlink: {}", e))?;
+            }
+            #[cfg(windows)]
+            {
+                std::os::windows::fs::symlink_file(&source, &dest_path)
+                    .map_err(|e| {
+                        format!(
+                            "Failed to create symlink: {}. Try running as administrator.",
+                            e
+                        )
+                    })?;
+            }
+        }
+        _ => return Err("Invalid import type. Use 'copy' or 'symlink'".to_string()),
+    }
+
+    // Emit event to refresh notes list
+    app.emit("note:list-updated", ()).ok();
+
+    Ok(dest_path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -367,6 +483,70 @@ async fn update_todo_due_date(
     let _ = app.emit("todos_changed", ());
 
     Ok(result)
+}
+
+#[tauri::command]
+async fn reorder_todo(
+    app: AppHandle,
+    vault_path: String,
+    old_index: usize,
+    new_index: usize,
+) -> Result<(), String> {
+    todos::reorder_todo(&vault_path, old_index, new_index)?;
+    let _ = app.emit("todos_changed", ());
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_todo_stats(vault_path: String) -> Result<todos::TodoStats, String> {
+    let metadata = todos::load_metadata(&vault_path)?;
+    Ok(metadata.stats)
+}
+
+#[tauri::command]
+async fn get_todo_metadata(vault_path: String) -> Result<todos::TodoMetadata, String> {
+    todos::load_metadata(&vault_path)
+}
+
+#[tauri::command]
+async fn set_daily_limit(vault_path: String, limit: usize) -> Result<(), String> {
+    let mut metadata = todos::load_metadata(&vault_path)?;
+    metadata.daily_limit = limit;
+    todos::save_metadata(&vault_path, &metadata)
+}
+
+#[tauri::command]
+async fn archive_completed_todos(
+    app: AppHandle,
+    vault_path: String,
+) -> Result<usize, String> {
+    let count = todos::archive_completed_todos(&vault_path)?;
+    let _ = app.emit("todos_changed", ());
+    Ok(count)
+}
+
+#[tauri::command]
+async fn load_archived_todos(
+    vault_path: String,
+    month: String,
+) -> Result<Vec<todos::ArchivedTodo>, String> {
+    todos::load_archived_todos(&vault_path, &month)
+}
+
+#[tauri::command]
+async fn list_archive_months(vault_path: String) -> Result<Vec<String>, String> {
+    todos::list_archive_months(&vault_path)
+}
+
+#[tauri::command]
+async fn bulk_update_due_dates(
+    app: AppHandle,
+    vault_path: String,
+    updates: Vec<(usize, Option<String>)>,
+) -> Result<(), String> {
+    todos::bulk_update_due_dates(&vault_path, updates)?;
+    let _ = app.emit("todos_changed", ());
+    Ok(())
 }
 
 #[tauri::command]
@@ -860,12 +1040,22 @@ pub fn run() {
             read_note,
             write_note,
             delete_note,
+            pick_markdown_file,
+            import_note,
             load_todos,
             create_todo,
             update_todo,
             delete_todo,
             toggle_todo,
             update_todo_due_date,
+            reorder_todo,
+            get_todo_stats,
+            get_todo_metadata,
+            set_daily_limit,
+            archive_completed_todos,
+            load_archived_todos,
+            list_archive_months,
+            bulk_update_due_dates,
              add_subtask,
              delete_subtask,
              toggle_subtask,
