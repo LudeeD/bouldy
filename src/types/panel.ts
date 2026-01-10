@@ -2,9 +2,9 @@ export type PanelType =
   | "notes"
   | "todos"
   | "calendar"
-  | "settings"
   | "prompts"
-  | "pomodoro";
+  | "pomodoro"
+  | "settings";
 
 export interface PanelState {
   left: PanelType | null;

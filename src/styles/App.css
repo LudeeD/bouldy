@@ -112,6 +112,19 @@
   --info: oklch(0.5 0.15 240);
 }
 
+/* Window focus effect - fades chrome (sidebar + title bar), content stays readable */
+[data-window-focused="false"] .window-chrome,
+[data-window-focused="false"] .window-titlebar {
+  opacity: 0.75;
+  transition: opacity 0.4s ease;
+}
+
+[data-window-focused="true"] .window-chrome,
+[data-window-focused="true"] .window-titlebar {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
 /* Custom prose theme using our design system */
 .prose,
 .mdxeditor-custom .prose {

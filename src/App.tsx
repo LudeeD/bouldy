@@ -1,6 +1,7 @@
 import "./styles/App.css";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Store } from "@tauri-apps/plugin-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NotesEditor } from "./features/notes";
@@ -31,6 +32,7 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
   });
   const [store, setStore] = useState<Store | null>(null);
   const [isNarrowScreen, setIsNarrowScreen] = useState(false);
+  const [isWindowFocused, setIsWindowFocused] = useState(true);
 
   // Initialize with notes on left, todos on right
   const [panels, setPanels] = useState<PanelState>({
@@ -53,12 +55,12 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
       const newStore = await Store.load("settings.json");
       setStore(newStore);
 
-       // Load saved theme - always apply it if it exists
-       const savedTheme = await newStore.get<string>("theme");
+      // Load saved theme - always apply it if it exists
+      const savedTheme = await newStore.get<string>("theme");
 
-       if (savedTheme) {
-         setCurrentTheme(savedTheme);
-       }
+      if (savedTheme) {
+        setCurrentTheme(savedTheme);
+      }
     };
     initStore();
   }, [currentTheme]);
@@ -74,6 +76,32 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
       store.save();
     }
   }, [currentTheme, store]);
+
+  // Window focus listener
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+
+    const setupFocusListener = async () => {
+      const appWindow = getCurrentWindow();
+      unlisten = await appWindow.onFocusChanged(({ payload: focused }) => {
+        setIsWindowFocused(focused);
+      });
+    };
+
+    setupFocusListener();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  // Apply window focus state to document root
+  useEffect(() => {
+    document.documentElement.setAttribute(
+      "data-window-focused",
+      isWindowFocused.toString(),
+    );
+  }, [isWindowFocused]);
 
   // Track screen width for responsive layout
   // Only enable single-panel mode if BOTH panels are open AND screen is narrow
@@ -306,6 +334,43 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [openMenu]);
 
+  // Keyboard listener for Alt+1/2/3/4 panel shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey) {
+        switch (e.key) {
+          case "1":
+            e.preventDefault();
+            activatePanel("notes");
+            break;
+          case "2":
+            e.preventDefault();
+            activatePanel("todos");
+            break;
+          case "3":
+            e.preventDefault();
+            activatePanel("calendar");
+            break;
+          case "4":
+            e.preventDefault();
+            activatePanel("prompts");
+            break;
+          case "5":
+            e.preventDefault();
+            activatePanel("pomodoro");
+            break;
+          case "6":
+            e.preventDefault();
+            activatePanel("settings");
+            break;
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activatePanel]);
+
   const renderPanel = (type: PanelType) => {
     switch (type) {
       case "notes":
@@ -433,18 +498,18 @@ function AppContent({ onResetVault, vaultPath }: AppContentProps) {
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-       {/* Top bar - smaller, cleaner */}
-         <div
-           data-tauri-drag-region
-            className="flex items-center justify-between px-4 h-9 cursor-move bg-bg-dark relative"
-          >
-           <div className="text-xs text-primary font-mono min-w-0 truncate">
-             {vaultPath}
-           </div>
-           <div className="flex-shrink-0">
-             <WindowControls />
-           </div>
-         </div>
+        {/* Top bar - smaller, cleaner */}
+        <div
+          data-tauri-drag-region
+          className="window-titlebar flex items-center justify-between px-4 h-9 cursor-move bg-bg-dark relative"
+        >
+          <div className="text-xs text-primary font-mono min-w-0 truncate">
+            {vaultPath}
+          </div>
+          <div className="flex-shrink-0">
+            <WindowControls />
+          </div>
+        </div>
 
         {/* Content: Two slots */}
         <div className="flex-1 flex overflow-hidden bg-dots  rounded-tl-lg">

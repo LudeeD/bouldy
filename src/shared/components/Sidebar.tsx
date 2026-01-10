@@ -59,7 +59,7 @@ export default function Sidebar({ activePanels, onOpenPanel }: SidebarProps) {
   };
 
   return (
-    <div className="w-12 bg-bg-dark flex flex-col items-center z-20">
+    <div className="window-chrome w-12 bg-bg-dark flex flex-col items-center z-20">
       {/* Boulder emoji at top */}
       <div className="h-12 flex items-center justify-center text-lg cursor-pointer">
         <span className="inline-block boulder-emoji">
