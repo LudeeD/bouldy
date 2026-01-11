@@ -328,6 +328,7 @@ dependencies = [
  "chrono",
  "notify",
  "notify-debouncer-full",
+ "regex",
  "serde",
  "serde_json",
  "serde_yaml",

@@ -391,6 +391,9 @@ async fn create_todo(
     vault_path: String,
     title: String,
     due_date: Option<String>,
+    priority: Option<String>,
+    projects: Vec<String>,
+    contexts: Vec<String>,
 ) -> Result<todos::TodoItem, String> {
     let mut todos_list = todos::load_todos(&vault_path)?;
 
@@ -399,7 +402,10 @@ async fn create_todo(
         title,
         completed: false,
         due_date,
-        subtasks: Vec::new(),
+        priority,
+        projects,
+        contexts,
+        created_date: Some(chrono::Local::now().format("%Y-%m-%d").to_string()),
     };
 
     todos_list.push(new_todo.clone());
@@ -486,6 +492,31 @@ async fn update_todo_due_date(
 }
 
 #[tauri::command]
+async fn update_todo_metadata(
+    app: AppHandle,
+    vault_path: String,
+    id: usize,
+    priority: Option<String>,
+    projects: Vec<String>,
+    contexts: Vec<String>,
+) -> Result<todos::TodoItem, String> {
+    let mut todos_list = todos::load_todos(&vault_path)?;
+
+    let todo = todos::find_todo_mut(&mut todos_list, id)
+        .ok_or_else(|| format!("Todo not found: {}", id))?;
+
+    todo.priority = priority;
+    todo.projects = projects;
+    todo.contexts = contexts;
+    let result = todo.clone();
+
+    todos::save_todos(&vault_path, &todos_list)?;
+    let _ = app.emit("todos_changed", ());
+
+    Ok(result)
+}
+
+#[tauri::command]
 async fn reorder_todo(
     app: AppHandle,
     vault_path: String,
@@ -539,6 +570,51 @@ async fn list_archive_months(vault_path: String) -> Result<Vec<String>, String> 
 }
 
 #[tauri::command]
+async fn list_projects(vault_path: String) -> Result<Vec<String>, String> {
+    let todos = todos::load_todos(&vault_path)?;
+
+    let projects: std::collections::HashSet<String> = todos
+        .iter()
+        .flat_map(|t| t.projects.iter().cloned())
+        .collect();
+
+    let mut project_list: Vec<String> = projects.into_iter().collect();
+    project_list.sort();
+
+    Ok(project_list)
+}
+
+#[tauri::command]
+async fn list_contexts(vault_path: String) -> Result<Vec<String>, String> {
+    let todos = todos::load_todos(&vault_path)?;
+
+    let contexts: std::collections::HashSet<String> = todos
+        .iter()
+        .flat_map(|t| t.contexts.iter().cloned())
+        .collect();
+
+    let mut context_list: Vec<String> = contexts.into_iter().collect();
+    context_list.sort();
+
+    Ok(context_list)
+}
+
+#[tauri::command]
+async fn list_priorities(vault_path: String) -> Result<Vec<String>, String> {
+    let todos = todos::load_todos(&vault_path)?;
+
+    let priorities: std::collections::HashSet<String> = todos
+        .iter()
+        .filter_map(|t| t.priority.clone())
+        .collect();
+
+    let mut priority_list: Vec<String> = priorities.into_iter().collect();
+    priority_list.sort();
+
+    Ok(priority_list)
+}
+
+#[tauri::command]
 async fn bulk_update_due_dates(
     app: AppHandle,
     vault_path: String,
@@ -547,102 +623,6 @@ async fn bulk_update_due_dates(
     todos::bulk_update_due_dates(&vault_path, updates)?;
     let _ = app.emit("todos_changed", ());
     Ok(())
-}
-
-#[tauri::command]
-async fn add_subtask(
-    app: AppHandle,
-    vault_path: String,
-    parent_id: usize,
-    title: String,
-) -> Result<todos::TodoItem, String> {
-    let mut todos_list = todos::load_todos(&vault_path)?;
-
-    let todo = todos::find_todo_mut(&mut todos_list, parent_id)
-        .ok_or_else(|| format!("Todo not found: {}", parent_id))?;
-
-    let subtask = todos::Subtask {
-        title,
-        completed: false,
-    };
-
-    todo.subtasks.push(subtask);
-    let result = todo.clone();
-
-    todos::save_todos(&vault_path, &todos_list)?;
-    let _ = app.emit("todos_changed", ());
-
-    Ok(result)
-}
-
-#[tauri::command]
-async fn delete_subtask(
-    app: AppHandle,
-    vault_path: String,
-    parent_id: usize,
-    subtask_index: usize,
-) -> Result<todos::TodoItem, String> {
-    let mut todos_list = todos::load_todos(&vault_path)?;
-
-    let todo = todos::find_todo_mut(&mut todos_list, parent_id)
-        .ok_or_else(|| format!("Todo not found: {}", parent_id))?;
-
-    if subtask_index < todo.subtasks.len() {
-        todo.subtasks.remove(subtask_index);
-    }
-    let result = todo.clone();
-
-    todos::save_todos(&vault_path, &todos_list)?;
-    let _ = app.emit("todos_changed", ());
-
-    Ok(result)
-}
-
-#[tauri::command]
-async fn toggle_subtask(
-    app: AppHandle,
-    vault_path: String,
-    parent_id: usize,
-    subtask_index: usize,
-) -> Result<todos::TodoItem, String> {
-    let mut todos_list = todos::load_todos(&vault_path)?;
-
-    let todo = todos::find_todo_mut(&mut todos_list, parent_id)
-        .ok_or_else(|| format!("Todo not found: {}", parent_id))?;
-
-    if let Some(subtask) = todos::find_subtask_mut(todo, subtask_index) {
-        subtask.completed = !subtask.completed;
-    }
-    let result = todo.clone();
-
-    todos::save_todos(&vault_path, &todos_list)?;
-    let _ = app.emit("todos_changed", ());
-
-    Ok(result)
-}
-
-#[tauri::command]
-async fn update_subtask_title(
-    app: AppHandle,
-    vault_path: String,
-    parent_id: usize,
-    subtask_index: usize,
-    title: String,
-) -> Result<todos::TodoItem, String> {
-    let mut todos_list = todos::load_todos(&vault_path)?;
-
-    let todo = todos::find_todo_mut(&mut todos_list, parent_id)
-        .ok_or_else(|| format!("Todo not found: {}", parent_id))?;
-
-    if let Some(subtask) = todos::find_subtask_mut(todo, subtask_index) {
-        subtask.title = title;
-    }
-    let result = todo.clone();
-
-    todos::save_todos(&vault_path, &todos_list)?;
-    let _ = app.emit("todos_changed", ());
-
-    Ok(result)
 }
 
 #[tauri::command]
@@ -1048,6 +1028,7 @@ pub fn run() {
             delete_todo,
             toggle_todo,
             update_todo_due_date,
+            update_todo_metadata,
             reorder_todo,
             get_todo_stats,
             get_todo_metadata,
@@ -1055,11 +1036,10 @@ pub fn run() {
             archive_completed_todos,
             load_archived_todos,
             list_archive_months,
+            list_projects,
+            list_contexts,
+            list_priorities,
             bulk_update_due_dates,
-             add_subtask,
-             delete_subtask,
-             toggle_subtask,
-             update_subtask_title,
             read_pomodoros,
             write_pomodoros,
             migrate_vault_structure,

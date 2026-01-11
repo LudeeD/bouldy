@@ -4,19 +4,17 @@ use std::fs;
 use std::path::Path;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Subtask {
-    pub title: String,
-    pub completed: bool,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TodoItem {
     pub id: usize, // Line number in the file (1-indexed)
     pub title: String,
     pub completed: bool,
     #[serde(rename = "dueDate")]
     pub due_date: Option<String>,
-    pub subtasks: Vec<Subtask>,
+    pub priority: Option<String>,  // (A), (B), (C), etc.
+    pub projects: Vec<String>,     // +ProjectName tags
+    pub contexts: Vec<String>,     // @ContextName tags
+    #[serde(rename = "createdDate")]
+    pub created_date: Option<String>,  // YYYY-MM-DD
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -54,7 +52,6 @@ pub struct ArchivedTodo {
     pub title: String,
     #[serde(rename = "completedDate")]
     pub completed_date: String,
-    pub subtasks: Vec<Subtask>,
 }
 
 /// Parse todo.txt file into TodoItem array
@@ -64,86 +61,84 @@ pub fn parse_todos(content: &str) -> Result<Vec<TodoItem>, String> {
     }
 
     let mut todos: Vec<TodoItem> = Vec::new();
-    let mut current_parent: Option<usize> = None;
     let mut line_num = 0;
 
-     for line in content.lines() {
-         line_num += 1;
-         if line.trim().is_empty() {
-             continue;
-         }
+    for line in content.lines() {
+        line_num += 1;
 
-         // Check if it's a subtask BEFORE trimming
-         if line.starts_with("  - ") || line.starts_with("  x ") {
-             // This is a subtask
-             if let Some(parent_idx) = current_parent {
-                 if let Ok(subtask) = parse_subtask_line(line) {
-                     todos[parent_idx].subtasks.push(subtask);
-                 }
-             }
-         } else {
-             // This is a todo item
-             let trimmed_line = line.trim();
-             if let Ok(todo) = parse_todo_line(trimmed_line, line_num) {
-                 current_parent = Some(todos.len());
-                 todos.push(todo);
-             }
-         }
-     }
+        if line.trim().is_empty() {
+            continue;
+        }
+
+        // Parse each line as a todo item
+        if let Ok(todo) = parse_todo_line(line.trim(), line_num) {
+            todos.push(todo);
+        }
+    }
 
     Ok(todos)
 }
 
 /// Parse a single todo line
 fn parse_todo_line(line: &str, line_num: usize) -> Result<TodoItem, String> {
-    let completed = line.starts_with('x');
-    let content = if completed {
-        &line[1..].trim_start()
-    } else {
-        line
-    };
+    let mut content = line.to_string();
 
-    // Extract due date if present (e.g., "due:2025-12-25")
-    let due_date = extract_due_date(content);
+    // 1. Check for completion marker
+    let completed = content.trim_start().starts_with('x');
+    if completed {
+        content = content.trim_start()[1..].trim_start().to_string();
+    }
 
-    // Remove due date tag from title
-    let title = if let Some(due) = &due_date {
-        content
-            .replace(&format!("due:{}", due), "")
-            .trim()
-            .to_string()
-    } else {
-        content.to_string()
-    };
+    // 2. Extract priority (must be at start after 'x')
+    let priority = extract_priority(&content);
+    if let Some(ref p) = priority {
+        content = content.replace(&format!("({})", p), "").trim().to_string();
+    }
+
+    // 3. Extract creation date (first date after priority removed)
+    let created_date = extract_created_date(&content);
+
+    // 4. Extract metadata tags
+    let due_date = extract_due_date(&content);
+    let projects = extract_projects(&content);
+    let contexts = extract_contexts(&content);
+
+    // 5. Build clean title (remove all metadata)
+    let mut title = content;
+
+    // Remove due date
+    if let Some(ref due) = due_date {
+        title = title.replace(&format!("due:{}", due), "");
+    }
+
+    // Remove creation date
+    if let Some(ref created) = created_date {
+        title = title.replace(created, "");
+    }
+
+    // Remove all project tags
+    for project in &projects {
+        title = title.replace(&format!("+{}", project), "");
+    }
+
+    // Remove all context tags
+    for context in &contexts {
+        title = title.replace(&format!("@{}", context), "");
+    }
+
+    // Clean up extra whitespace
+    title = title.split_whitespace().collect::<Vec<_>>().join(" ");
 
     Ok(TodoItem {
         id: line_num,
         title,
         completed,
         due_date,
-        subtasks: Vec::new(),
+        priority,
+        projects,
+        contexts,
+        created_date,
     })
-}
-
-/// Parse a subtask line
-fn parse_subtask_line(line: &str) -> Result<Subtask, String> {
-    let line = line.trim();
-
-    let completed = line.starts_with('x');
-    let content = if completed {
-        &line[1..].trim_start()
-    } else {
-        line
-    };
-
-    // Remove the "- " prefix if present
-    let title = if let Some(rest) = content.strip_prefix("- ") {
-        rest.to_string()
-    } else {
-        content.to_string()
-    };
-
-    Ok(Subtask { title, completed })
 }
 
 /// Extract due date from line (e.g., "due:2025-12-25")
@@ -157,29 +152,103 @@ fn extract_due_date(content: &str) -> Option<String> {
     })
 }
 
+/// Extract priority from start of line (e.g., "(A)")
+fn extract_priority(content: &str) -> Option<String> {
+    let trimmed = content.trim();
+    if trimmed.starts_with('(') && trimmed.len() > 2 {
+        if let Some(end_pos) = trimmed.find(')') {
+            if end_pos == 2 {  // Single letter priority
+                let priority = &trimmed[1..2];
+                if priority.chars().next().unwrap().is_ascii_uppercase() {
+                    return Some(priority.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Extract all project tags from line (e.g., "+ProjectName")
+fn extract_projects(content: &str) -> Vec<String> {
+    content
+        .split_whitespace()
+        .filter_map(|word| {
+            if word.starts_with('+') && word.len() > 1 {
+                Some(word[1..].to_string())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Extract all context tags from line (e.g., "@ContextName")
+fn extract_contexts(content: &str) -> Vec<String> {
+    content
+        .split_whitespace()
+        .filter_map(|word| {
+            if word.starts_with('@') && word.len() > 1 {
+                Some(word[1..].to_string())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Extract creation date (first date in line after priority)
+fn extract_created_date(content: &str) -> Option<String> {
+    // After removing priority, first YYYY-MM-DD is creation date
+    use regex::Regex;
+    if let Ok(date_regex) = Regex::new(r"\d{4}-\d{2}-\d{2}") {
+        date_regex.find(content).map(|m| m.as_str().to_string())
+    } else {
+        None
+    }
+}
+
 /// Serialize TodoItem array to todo.txt format
 pub fn serialize_todos(todos: &[TodoItem]) -> String {
     let mut result = String::new();
 
     for todo in todos {
-        let completed_prefix = if todo.completed { "x " } else { "" };
-        let due_date_tag = todo
-            .due_date
-            .as_ref()
-            .map(|d| format!(" due:{}", d))
-            .unwrap_or_default();
+        let mut parts = Vec::new();
 
-        result.push_str(&format!(
-            "{}{}{}",
-            completed_prefix, todo.title, due_date_tag
-        ));
-        result.push('\n');
-
-        // Add subtasks
-        for subtask in &todo.subtasks {
-            let subtask_prefix = if subtask.completed { "x " } else { "" };
-            result.push_str(&format!("  {}- {}\n", subtask_prefix, subtask.title));
+        // 1. Completion marker
+        if todo.completed {
+            parts.push("x".to_string());
         }
+
+        // 2. Priority
+        if let Some(ref priority) = todo.priority {
+            parts.push(format!("({})", priority));
+        }
+
+        // 3. Creation date
+        if let Some(ref created) = todo.created_date {
+            parts.push(created.clone());
+        }
+
+        // 4. Task description
+        parts.push(todo.title.clone());
+
+        // 5. Project tags
+        for project in &todo.projects {
+            parts.push(format!("+{}", project));
+        }
+
+        // 6. Context tags
+        for context in &todo.contexts {
+            parts.push(format!("@{}", context));
+        }
+
+        // 7. Due date (extension)
+        if let Some(ref due) = todo.due_date {
+            parts.push(format!("due:{}", due));
+        }
+
+        result.push_str(&parts.join(" "));
+        result.push('\n');
     }
 
     result
@@ -209,10 +278,6 @@ pub fn save_todos(vault_path: &str, todos: &[TodoItem]) -> Result<(), String> {
 
 pub fn find_todo_mut(todos: &mut [TodoItem], id: usize) -> Option<&mut TodoItem> {
     todos.iter_mut().find(|t| t.id == id)
-}
-
-pub fn find_subtask_mut(todo: &mut TodoItem, index: usize) -> Option<&mut Subtask> {
-    todo.subtasks.get_mut(index)
 }
 
 pub fn reorder_todo(vault_path: &str, old_index: usize, new_index: usize) -> Result<(), String> {
@@ -389,10 +454,6 @@ pub fn archive_completed_todos(vault_path: &str) -> Result<usize, String> {
     // Append completed todos to archive
     for todo in &completed_todos {
         archive_content.push_str(&format!("[{}] {}\n", today, todo.title));
-        for subtask in &todo.subtasks {
-            let prefix = if subtask.completed { "x " } else { "" };
-            archive_content.push_str(&format!("  {}- {}\n", prefix, subtask.title));
-        }
     }
 
     fs::write(&archive_file, archive_content)
@@ -420,43 +481,19 @@ pub fn load_archived_todos(vault_path: &str, month: &str) -> Result<Vec<Archived
         .map_err(|e| format!("Failed to read archive file: {}", e))?;
 
     let mut archived_todos = Vec::new();
-    let mut current_todo: Option<ArchivedTodo> = None;
 
     for line in content.lines() {
         if line.starts_with('[') {
-            // Save previous todo if any
-            if let Some(todo) = current_todo.take() {
-                archived_todos.push(todo);
-            }
-
             // Parse new todo: [2026-01-03] Task title
             if let Some(end_bracket) = line.find(']') {
                 let date = line[1..end_bracket].to_string();
                 let title = line[end_bracket + 1..].trim().to_string();
-                current_todo = Some(ArchivedTodo {
+                archived_todos.push(ArchivedTodo {
                     title,
                     completed_date: date,
-                    subtasks: Vec::new(),
                 });
             }
-        } else if line.trim().starts_with("- ") || line.trim().starts_with("x ") {
-            // Subtask
-            if let Some(ref mut todo) = current_todo {
-                let trimmed = line.trim();
-                let completed = trimmed.starts_with("x ");
-                let title = if completed {
-                    trimmed[3..].to_string() // Skip "x - "
-                } else {
-                    trimmed[2..].to_string() // Skip "- "
-                };
-                todo.subtasks.push(Subtask { title, completed });
-            }
         }
-    }
-
-    // Save last todo
-    if let Some(todo) = current_todo {
-        archived_todos.push(todo);
     }
 
     Ok(archived_todos)

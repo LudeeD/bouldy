@@ -1,14 +1,12 @@
-export interface Subtask {
-  title: string;
-  completed: boolean;
-}
-
 export interface TodoItem {
   id: number;
   title: string;
   completed: boolean;
   dueDate?: string;
-  subtasks: Subtask[];
+  priority?: string;     // (A), (B), (C), etc.
+  projects: string[];    // +ProjectName tags
+  contexts: string[];    // @ContextName tags
+  createdDate?: string;  // YYYY-MM-DD
 }
 
 export interface TodoStats {
@@ -27,5 +25,4 @@ export interface TodoMetadata {
 export interface ArchivedTodo {
   title: string;
   completedDate: string;
-  subtasks: Subtask[];
 }
