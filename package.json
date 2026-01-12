@@ -1,7 +1,7 @@
 {
   "name": "bouldy",
   "private": true,
-  "version": "",
+  "version": "0.4.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
